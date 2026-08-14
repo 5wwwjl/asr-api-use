@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="980" viewBox="0 0 1680 980">
+  <defs>
+    <style>
+      .bg { fill: #f7f8fa; }
+      .title { font: 700 32px Arial, "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #172033; }
+      .module-title { font: 700 22px Arial, "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #172033; }
+      .box-title { font: 700 18px Arial, "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #172033; }
+      .box-text { font: 15px Arial, "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #39465c; }
+      .small { font: 13px Arial, "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #536178; }
+      .module { fill: #ffffff; stroke-width: 2; rx: 18; }
+      .m1 { stroke: #2f80ed; }
+      .m2 { stroke: #00a676; }
+      .m3 { stroke: #d97706; }
+      .box { fill: #ffffff; stroke: #c8d1df; stroke-width: 1.6; rx: 12; }
+      .input { fill: #eef4ff; stroke: #2f80ed; }
+      .output { fill: #f0fdf4; stroke: #00a676; }
+      .warn { fill: #fff7ed; stroke: #d97706; }
+      .line { stroke: #536178; stroke-width: 2.2; fill: none; marker-end: url(#arrow); }
+      .line-blue { stroke: #2f80ed; stroke-width: 2.4; fill: none; marker-end: url(#arrow-blue); }
+      .line-green { stroke: #00a676; stroke-width: 2.4; fill: none; marker-end: url(#arrow-green); }
+      .line-orange { stroke: #d97706; stroke-width: 2.4; fill: none; marker-end: url(#arrow-orange); }
+      .dash { stroke-dasharray: 8 7; }
+      .label { font: 14px Arial, "Noto Sans CJK SC", "Microsoft YaHei", sans-serif; fill: #536178; }
+    </style>
+    <marker id="arrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#536178"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#2f80ed"/>
+    </marker>
+    <marker id="arrow-green" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#00a676"/>
+    </marker>
+    <marker id="arrow-orange" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#d97706"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="1680" height="980"/>
+  <text class="title" x="60" y="60">ASR Framework 流程图</text>
+
+  <!-- Input / gateway -->
+  <rect class="box input" x="60" y="105" width="260" height="110" rx="14"/>
+  <text class="box-title" x="85" y="142">语音流输入</text>
+  <text class="box-text" x="85" y="172">call.started / audio.frame / call.ended</text>
+  <text class="small" x="85" y="196">Base64 PCM + callId + speaker + direction</text>
+
+  <rect class="box" x="370" y="105" width="240" height="110" rx="14"/>
+  <text class="box-title" x="395" y="142">Bridge 接入</text>
+  <text class="box-text" x="395" y="172">WSS /asr</text>
+  <text class="small" x="395" y="196">https_gateway.proxy_asr_ws</text>
+
+  <rect class="box" x="660" y="105" width="250" height="110" rx="14"/>
+  <text class="box-title" x="685" y="142">BridgeSession</text>
+  <text class="box-text" x="685" y="172">协议翻译 / 会话状态</text>
+  <text class="small" x="685" y="196">ACK + callId + speaker + direction</text>
+
+  <path class="line" d="M320 160 H370"/>
+  <path class="line" d="M610 160 H660"/>
+
+  <!-- Module 1 -->
+  <rect class="module m1" x="60" y="270" width="500" height="560" rx="18"/>
+  <text class="module-title" x="88" y="315">模块一：FunASR 接入语音流和转写</text>
+
+  <rect class="box" x="100" y="345" width="420" height="88" rx="12"/>
+  <text class="box-title" x="125" y="378">音频解析与预处理</text>
+  <text class="box-text" x="125" y="406">Base64 -> PCM，音量诊断 / 增益处理</text>
+
+  <rect class="box warn" x="100" y="465" width="420" height="88" rx="12"/>
+  <text class="box-title" x="125" y="498">热词加载</text>
+  <text class="box-text" x="125" y="526">hotwords.txt -> hotwords，握手传给 FunASR</text>
+
+  <rect class="box" x="100" y="585" width="420" height="88" rx="12"/>
+  <text class="box-title" x="125" y="618">FunASR 识别</text>
+  <text class="box-text" x="125" y="646">2pass streaming / offline，segmentId 绑定</text>
+
+  <rect class="box input" x="100" y="705" width="420" height="88" rx="12"/>
+  <text class="box-title" x="125" y="738">文本1：ASR 原始文本</text>
+  <text class="box-text" x="125" y="766">streaming 实时文本；offline 转 speech.final</text>
+
+  <path class="line-blue" d="M310 433 V465"/>
+  <path class="line-blue" d="M310 553 V585"/>
+  <path class="line-blue" d="M310 673 V705"/>
+
+  <!-- Module 2 -->
+  <rect class="module m2" x="620" y="270" width="520" height="560" rx="18"/>
+  <text class="module-title" x="648" y="315">模块二：VAD 分段与轮次绑定</text>
+
+  <rect class="box" x="665" y="345" width="430" height="88" rx="12"/>
+  <text class="box-title" x="690" y="378">VAD 音频边界检测</text>
+  <text class="box-text" x="690" y="406">speech_started / is_speaking / speech_ended</text>
+
+  <rect class="box" x="665" y="465" width="430" height="102" rx="12"/>
+  <text class="box-title" x="690" y="498">轮次归属</text>
+  <text class="box-text" x="690" y="526">pair_key(callfrom, callto, callId)</text>
+  <text class="small" x="690" y="548">speaker_key：agent/system -> agent，其余 caller</text>
+
+  <rect class="box" x="665" y="600" width="430" height="88" rx="12"/>
+  <text class="box-title" x="690" y="633">按 segmentId 取回文本</text>
+  <text class="box-text" x="690" y="661">把 VAD 分段与 FunASR 文本片段对齐</text>
+
+  <rect class="box output" x="665" y="720" width="430" height="88" rx="12"/>
+  <text class="box-title" x="690" y="753">文本2：稳定 turn 文本</text>
+  <text class="box-text" x="690" y="781">去重 / 前缀更新 / 首尾重叠合并</text>
+
+  <path class="line-green" d="M880 433 V465"/>
+  <path class="line-green" d="M880 567 V600"/>
+  <path class="line-green" d="M880 688 V720"/>
+
+  <!-- Module 3 -->
+  <rect class="module m3" x="1200" y="270" width="420" height="560" rx="18"/>
+  <text class="module-title" x="1228" y="315">模块三：后处理地址库纠错</text>
+
+  <rect class="box" x="1238" y="345" width="344" height="88" rx="12"/>
+  <text class="box-title" x="1263" y="378">turn 完成后触发</text>
+  <text class="box-text" x="1263" y="406">_schedule_turn_correction</text>
+
+  <rect class="box" x="1238" y="465" width="344" height="88" rx="12"/>
+  <text class="box-title" x="1263" y="498">地址库候选加载</text>
+  <text class="box-text" x="1263" y="526">address_db / db_align</text>
+
+  <rect class="box" x="1238" y="585" width="344" height="88" rx="12"/>
+  <text class="box-title" x="1263" y="618">地址对齐纠错</text>
+  <text class="box-text" x="1263" y="646">拼音 / 近音匹配，替换候选地址</text>
+
+  <rect class="box warn" x="1238" y="705" width="344" height="88" rx="12"/>
+  <text class="box-title" x="1263" y="738">纠错结果</text>
+  <text class="box-text" x="1263" y="766">call.corrected / correctedText</text>
+
+  <path class="line-orange" d="M1410 433 V465"/>
+  <path class="line-orange" d="M1410 553 V585"/>
+  <path class="line-orange" d="M1410 673 V705"/>
+
+  <!-- Cross-module links -->
+  <path class="line" d="M785 215 C785 245, 310 235, 310 345"/>
+  <path class="line-blue" d="M910 160 C1005 160, 1030 250, 520 375"/>
+  <text class="label" x="955" y="155">audio.frame</text>
+
+  <path class="line-green" d="M520 389 C575 389, 600 389, 665 389"/>
+  <text class="label" x="558" y="375">同一份音频流</text>
+
+  <path class="line dash" d="M520 750 C590 750, 610 645, 665 645"/>
+  <text class="label" x="555" y="715">segmentId 关联</text>
+
+  <path class="line-orange" d="M1095 765 H1238"/>
+  <text class="label" x="1126" y="750">稳定文本进入纠错</text>
+
+  <!-- Output -->
+  <rect class="box output" x="1180" y="870" width="440" height="70" rx="14"/>
+  <text class="box-title" x="1205" y="900">输出分发</text>
+  <text class="box-text" x="1205" y="925">客户端 / monitor / RabbitMQ / DB</text>
+
+  <path class="line" d="M520 750 C690 870, 1000 905, 1180 905"/>
+  <path class="line" d="M1410 793 V870"/>
+
+  <!-- Legend -->
+  <rect class="box" x="60" y="870" width="760" height="70" rx="14"/>
+  <text class="box-title" x="85" y="900">核心口径</text>
+  <text class="box-text" x="85" y="925">VAD 切的是音频边界，不是直接切文本；VAD 完成 turn 后用 segmentId 找回 ASR 文本并合并成文本2。</text>
+</svg>

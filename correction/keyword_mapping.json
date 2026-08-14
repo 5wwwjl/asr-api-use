@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "name": "提问关键词 → 热词子集映射表",
+    "description": "仅加载南山区建筑地址热词，全程激活用于精准地址 ASR 纠错。",
+    "version": "2.0.0",
+    "total_subsets": 1
+  },
+  "global_files": [
+    "correction/entries_nanshan_address.json"
+  ],
+  "mappings": [
+    {
+      "subset_id": "NS-ADDR",
+      "subset_name": "南山区建筑地址",
+      "file": "correction/entries_nanshan_address.json",
+      "keywords": ["在哪里", "地址", "位置", "哪里", "哪个区", "什么街道", "哪个镇", "哪个村", "具体在", "说一下位置", "说地址", "什么地址", "具体地址", "路", "街", "巷", "大道", "小区", "社区", "镇", "几栋", "几单元", "几楼", "几号", "门牌", "旁边", "附近", "对面", "边上"]
+    }
+  ]
+}

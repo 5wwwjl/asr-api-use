@@ -1,0 +1,47 @@
+flowchart LR
+    subgraph A[ASR 转写与地址纠错]
+        Audio[语音流<br/>caller / agent 双路] --> FunASR[FunASR<br/>Paraformer]
+        Hotword([动态热词<br/>地址、楼宇、园区、消防设施]) --> FunASR
+        FunASR --> Raw[ASR 初始文本]
+        Raw --> AddressDetect[地址表达识别<br/>明确实体 / 模糊指代判定]
+        AddressRule([地址表达规则<br/>位置引导词加分<br/>专名 + 地址后缀加分<br/>泛指 / 指代词惩罚]) --> AddressDetect
+        AddressDetect -->|明确地址片段| Post[后处理纠错<br/>拼音、别名、地址库、层级校验]
+        AddressDetect -->|模糊位置描述| Incomplete[保留原文<br/>标记地址不完整 / 待确认]
+        Incomplete --> Transcript
+        Post --> Transcript[转写文本<br/>实时结果 + 最终结果]
+        Transcript --> Semantic[语义理解<br/>DeepSeek]
+        Semantic --> GIS[GIS Search<br/>实体检索、空间检索]
+        GIS --> Context[上下文 / 对话状态<br/>GIS 前端展示、下一问目标]
+    end
+
+    subgraph B[要素提取与槽位构建]
+        AddressType[地址分类] --> Slots[要素槽位<br/>地址槽位 / 场景槽位 / 顺序槽位]
+        SceneType[场景分类] --> Slots
+        OrderType[顺序分类] --> Slots
+        Rule([规则库 / 提取模板]) --> Slots
+        Slots --> Match[槽位匹配]
+        Match --> SlotResult[槽位结果]
+    end
+
+    subgraph C[问询决策与坐席展示]
+        LLM([LLM 规则 / 提示词]) --> Check[要素校验<br/>完整性、冲突、置信度]
+        Check --> Confirm[槽位完整性校对]
+        Confirm --> Decision[问询决策<br/>下一问生成]
+        QA([问答库]) --> Decision
+        Decision --> Frontend[坐席前端<br/>已问 / 未问 / 下一问建议<br/>槽位结果、GIS 展示]
+    end
+
+    Transcript -->|地址文本| AddressType
+    Semantic -->|识别意图| SceneType
+    Context -->|当前轮次| OrderType
+    SlotResult --> Check
+    Context -->|检索结果与上下文| Decision
+
+    classDef asr fill:#f8cecc,stroke:#b85450,color:#000;
+    classDef process fill:#d5e8d4,stroke:#82b366,color:#000;
+    classDef support fill:#fff2cc,stroke:#d6b656,color:#000;
+    classDef output fill:#dae8fc,stroke:#6c8ebf,color:#000;
+    class FunASR,Raw asr;
+    class AddressDetect,Post,Transcript,Semantic,GIS,Context,Slots,Match,SlotResult,Check,Confirm,Decision process;
+    class Audio,Hotword,AddressRule,Rule,LLM,QA support;
+    class Frontend output;

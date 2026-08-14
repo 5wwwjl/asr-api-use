@@ -1,0 +1,37 @@
+FROM python:3.13-slim-bookworm
+
+LABEL org.opencontainers.image.title="full-question ASR gateway" \
+      org.opencontainers.image.description="HTTPS/WebSocket gateway and business post-processing for FunASR"
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    GATEWAY_HOST=0.0.0.0 \
+    GATEWAY_PORT=8443 \
+    GATEWAY_WEB_DIR=/app/web \
+    TLS_CERT_FILE=/data/certs/cert.pem \
+    TLS_KEY_FILE=/data/certs/key.pem \
+    ASR_RECORDINGS_DIR=/data/recordings \
+    ASR_BUSINESS_LOG_DIR=/data/logs
+
+WORKDIR /app
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends ca-certificates openssl \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.docker.txt ./
+RUN python -m pip install --no-cache-dir -r requirements.docker.txt
+
+COPY . .
+COPY docker/default-hotwords.txt /app/hotwords.txt
+RUN chmod +x /app/docker/gateway-entrypoint.sh /app/generate_dev_cert.sh \
+    && mkdir -p /data/certs /data/logs /data/recordings
+
+EXPOSE 8443
+VOLUME ["/data/certs", "/data/logs", "/data/recordings"]
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=20s --retries=5 \
+  CMD python -c "import socket; s=socket.create_connection(('127.0.0.1', 8443), 3); s.close()" || exit 1
+
+ENTRYPOINT ["/app/docker/gateway-entrypoint.sh"]

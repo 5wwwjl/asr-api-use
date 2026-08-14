@@ -1,0 +1,10 @@
+# ASR-LOC-02 门牌与路口
+# 一级分类: ASR-LOC 地点与地址
+# 适用: yes
+# 热词数: 4
+# 由 generate_taxonomy_hotwords.py 生成，请勿手工编辑。
+
+十字路口
+交叉口
+门牌号
+丁字路口

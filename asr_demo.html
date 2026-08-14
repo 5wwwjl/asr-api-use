@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASR 语音识别测试 Demo</title>
+<style>
+  body { font-family: 'PingFang SC','Microsoft YaHei',sans-serif; max-width:600px; margin:40px auto; padding:20px; background:#1a1a2e; color:#eee; }
+  h2 { color:#e94560; }
+  .section { background:#16213e; border-radius:12px; padding:20px; margin:16px 0; }
+  label { display:block; margin:8px 0 4px; color:#a0a0b0; font-size:13px; }
+  input, select { width:100%; padding:10px; border-radius:8px; border:1px solid #333; background:#0f3460; color:#eee; font-size:14px; box-sizing:border-box; }
+  button { padding:12px 24px; border:none; border-radius:8px; font-size:15px; cursor:pointer; margin-right:8px; margin-top:8px; }
+  .btn-start { background:#e94560; color:#fff; }
+  .btn-stop { background:#533483; color:#fff; }
+  .btn-clear { background:#333; color:#ccc; }
+  button:disabled { opacity:0.4; cursor:not-allowed; }
+  #log { background:#0d1117; border-radius:8px; padding:14px; height:300px; overflow-y:auto; font-family:monospace; font-size:13px; line-height:1.8; white-space:pre-wrap; word-break:break-all; }
+  .log-send { color:#58a6ff; }
+  .log-recv { color:#7ee787; }
+  .log-error { color:#f85149; }
+  .log-info { color:#d2a8ff; }
+  .status { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; }
+  .status.ok { background:#7ee787; }
+  .status.err { background:#f85149; }
+  .status.idle { background:#555; }
+</style>
+</head>
+<body>
+
+<h2>ASR 语音识别测试 Demo</h2>
+<p style="color:#a0a0b0; font-size:14px;">
+  接口地址：<code style="color:#58a6ff;">wss://sqasr.telewave.com.cn:8443/asr?callId=&lt;callId&gt;</code>
+</p>
+
+<div class="section">
+  <label>Call ID（会话标识）</label>
+  <input type="text" id="callId" value="demo_test_001" placeholder="输入 callId">
+
+  <label>服务地址</label>
+  <input type="text" id="wsUrl" value="wss://sqasr.telewave.com.cn:8443/asr" placeholder="WebSocket 地址">
+
+  <button class="btn-start" id="btnStart" onclick="start()">开始录音识别</button>
+  <button class="btn-stop" id="btnStop" onclick="stop()" disabled>停止录音</button>
+  <button class="btn-clear" onclick="clearLog()">清空日志</button>
+  <span style="margin-left:12px;font-size:14px;">
+    <span class="status idle" id="statusDot"></span>
+    <span id="statusText">未连接</span>
+  </span>
+</div>
+
+<div class="section">
+  <strong>识别结果：</strong>
+  <div id="resultBox" style="min-height:24px; padding:10px; background:#0d1117; border-radius:8px; margin-top:8px; font-size:16px; color:#fff;">等待识别...</div>
+</div>
+
+<div class="section">
+  <strong>通信日志：</strong>
+  <div id="log"></div>
+</div>
+
+<script>
+let ws = null;
+let audioCtx = null;
+let stream = null;
+let processor = null;
+
+const callIdEl = document.getElementById('callId');
+const wsUrlEl = document.getElementById('wsUrl');
+const btnStart = document.getElementById('btnStart');
+const btnStop = document.getElementById('btnStop');
+const resultBox = document.getElementById('resultBox');
+const logEl = document.getElementById('log');
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+
+function getFullUrl() {
+  const base = wsUrlEl.value.trim();
+  const cid = callIdEl.value.trim();
+  return cid ? `${base}?callId=${encodeURIComponent(cid)}` : base;
+}
+
+function log(msg, cls) {
+  const time = new Date().toLocaleTimeString();
+  logEl.innerHTML += `<span class="${cls}">[${time}] ${msg}</span>\n`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function clearLog() { logEl.innerHTML = ''; }
+
+function setStatus(state) {
+  statusDot.className = 'status ' + state;
+  statusText.textContent = {ok:'已连接',err:'已断开',idle:'未连接'}[state];
+}
+
+function toInt16(input) {
+  const out = new Int16Array(input.length);
+  for (let i = 0; i < input.length; i++) {
+    const s = Math.max(-1, Math.min(1, input[i]));
+    out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return out;
+}
+
+function downsample(buffer, inRate, outRate) {
+  if (outRate >= inRate) return buffer;
+  const ratio = inRate / outRate;
+  const newLen = Math.round(buffer.length / ratio);
+  const out = new Float32Array(newLen);
+  for (let i = 0; i < newLen; i++) {
+    const start = Math.round(i * ratio);
+    const end = Math.round((i + 1) * ratio);
+    let sum = 0, count = 0;
+    for (let j = start; j < end && j < buffer.length; j++) { sum += buffer[j]; count++; }
+    out[i] = count ? sum / count : 0;
+  }
+  return out;
+}
+
+async function start() {
+  try {
+    const url = getFullUrl();
+    log(`连接: ${url}`, 'log-info');
+
+    ws = new WebSocket(url);
+
+    ws.onopen = async () => {
+      log('WebSocket 已连接', 'log-info');
+      setStatus('ok');
+      btnStart.disabled = true;
+      btnStop.disabled = false;
+
+      // 获取麦克风
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioCtx.createMediaStreamSource(stream);
+      processor = audioCtx.createScriptProcessor(4096, 1, 1);
+
+      log(`音频参数: 采样率=${audioCtx.sampleRate}Hz, 单声道`, 'log-info');
+
+      // FunASR 初始握手（必须！否则服务端不处理音频）
+      const handshake = JSON.stringify({
+        chunk_size: [5, 10, 5],
+        wav_name: 'demo',
+        is_speaking: true,
+        chunk_interval: 10,
+        mode: '2pass',
+        itn: true,
+        language: 'auto'
+      });
+      ws.send(handshake);
+      log(`握手: ${handshake}`, 'log-send');
+
+      log('开始发送音频数据...', 'log-info');
+      resultBox.textContent = '识别中...';
+
+      processor.onaudioprocess = (event) => {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        const input = event.inputBuffer.getChannelData(0);
+        const down = downsample(input, audioCtx.sampleRate, 16000);
+        const pcm = toInt16(down);
+        ws.send(pcm.buffer);
+      };
+
+      source.connect(processor);
+      processor.connect(audioCtx.destination);
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        log(`收到: ${JSON.stringify(data)}`, 'log-recv');
+
+        if (data.text && data.text.trim()) {
+          if (data.is_final || data.mode === '2pass-offline') {
+            resultBox.innerHTML = `<span style="color:#7ee787;">${data.text}</span>`;
+          } else {
+            resultBox.innerHTML = `<span style="color:#ccc;">${data.text}</span>`;
+          }
+        }
+      } catch (e) {
+        log(`收到非JSON数据: ${typeof event.data}`, 'log-error');
+      }
+    };
+
+    ws.onerror = (e) => {
+      log('WebSocket 连接错误', 'log-error');
+      setStatus('err');
+    };
+
+    ws.onclose = (e) => {
+      log(`WebSocket 已断开 (code=${e.code})`, 'log-info');
+      setStatus('idle');
+      cleanup();
+    };
+
+  } catch (e) {
+    log(`启动失败: ${e.message}`, 'log-error');
+    cleanup();
+  }
+}
+
+function cleanup() {
+  if (processor) { processor.disconnect(); processor = null; }
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
+  if (stream) { stream.getTracks().forEach(t => t.stop()); stream = null; }
+  btnStart.disabled = false;
+  btnStop.disabled = true;
+}
+
+async function stop() {
+  log('发送结束信号 is_speaking=false...', 'log-send');
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ is_speaking: false, mode: '2pass' }));
+    log('已发送结束信号，等待最终结果...', 'log-info');
+  }
+  setTimeout(() => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.close();
+    }
+  }, 2000);
+  cleanup();
+}
+
+window.addEventListener('beforeunload', cleanup);
+</script>
+
+</body>
+</html>

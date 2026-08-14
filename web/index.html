@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ASR 即插即用 Demo</title>
+  <style>
+    body { font-family: sans-serif; margin: 24px; max-width: 900px; }
+    .row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+    button { padding: 8px 14px; }
+    textarea { width: 100%; min-height: 180px; padding: 10px; }
+    #log { white-space: pre-wrap; background: #f4f4f4; padding: 10px; min-height: 100px; }
+  </style>
+</head>
+<body>
+  <h2>ASR 即插即用 Demo</h2>
+  <div class="row">
+    <button id="startBtn">开始录音</button>
+    <button id="stopBtn" disabled>停止录音</button>
+    <span id="status">未连接</span>
+  </div>
+
+  <div class="row">
+    <label for="wsUrl">ASR WS:</label>
+    <input id="wsUrl" style="flex:1" />
+  </div>
+
+  <textarea id="result" placeholder="识别文本..."></textarea>
+  <h4>日志</h4>
+  <div id="log"></div>
+
+<script>
+const wsUrlInput = document.getElementById('wsUrl');
+const resultEl = document.getElementById('result');
+const logEl = document.getElementById('log');
+const statusEl = document.getElementById('status');
+const startBtn = document.getElementById('startBtn');
+const stopBtn = document.getElementById('stopBtn');
+
+const wsScheme = location.protocol === 'https:' ? 'wss' : 'ws';
+wsUrlInput.value = `${wsScheme}://${location.host}/asr`;
+
+let ws = null;
+let audioContext = null;
+let stream = null;
+let processor = null;
+let source = null;
+let isRecording = false;
+let currentAsrText = '';
+let finalAsrText = '';
+
+function log(msg) {
+  logEl.textContent += `${new Date().toLocaleTimeString()} ${msg}\n`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function toInt16(input) {
+  const out = new Int16Array(input.length);
+  for (let i = 0; i < input.length; i++) {
+    const s = Math.max(-1, Math.min(1, input[i]));
+    out[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+  }
+  return out;
+}
+
+function downsample(buffer, inRate, outRate) {
+  if (outRate >= inRate) return buffer;
+  const ratio = inRate / outRate;
+  const newLen = Math.round(buffer.length / ratio);
+  const out = new Float32Array(newLen);
+  let offsetResult = 0;
+  let offsetBuffer = 0;
+  while (offsetResult < out.length) {
+    const nextOffsetBuffer = Math.round((offsetResult + 1) * ratio);
+    let accum = 0;
+    let count = 0;
+    for (let i = offsetBuffer; i < nextOffsetBuffer && i < buffer.length; i++) {
+      accum += buffer[i];
+      count++;
+    }
+    out[offsetResult] = accum / count;
+    offsetResult++;
+    offsetBuffer = nextOffsetBuffer;
+  }
+  return out;
+}
+
+function handleAsrMessage(data) {
+  const asrmode = data.mode;
+  const isFinal = data.is_final;
+  const text = data.text || data.rec_text || '';
+  if (!text) return;
+
+  if (isFinal || asrmode === '2pass-offline' || asrmode === 'offline') {
+    let delta = text;
+    if (currentAsrText && text.startsWith(currentAsrText)) {
+      delta = text.slice(currentAsrText.length);
+    } else if (currentAsrText) {
+      finalAsrText = finalAsrText.slice(0, finalAsrText.length - currentAsrText.length);
+      delta = text;
+    }
+    finalAsrText += delta;
+    currentAsrText = '';
+  } else {
+    if (currentAsrText && text.startsWith(currentAsrText)) {
+      finalAsrText += text.slice(currentAsrText.length);
+      currentAsrText = text;
+    } else if (!currentAsrText) {
+      finalAsrText += text;
+      currentAsrText = text;
+    } else {
+      finalAsrText = finalAsrText.slice(0, finalAsrText.length - currentAsrText.length) + text;
+      currentAsrText = text;
+    }
+  }
+  resultEl.value = finalAsrText;
+}
+
+async function startRecord() {
+  ws = new WebSocket(wsUrlInput.value.trim());
+
+  ws.onopen = async () => {
+    statusEl.textContent = '已连接';
+    ws.send(JSON.stringify({
+      chunk_size: [5, 10, 5],
+      wav_name: 'web',
+      is_speaking: true,
+      chunk_interval: 10,
+      mode: '2pass',
+      itn: true,
+      language: 'auto'
+    }));
+
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    source = audioContext.createMediaStreamSource(stream);
+    processor = audioContext.createScriptProcessor(4096, 1, 1);
+
+    processor.onaudioprocess = (event) => {
+      if (!isRecording || !ws || ws.readyState !== WebSocket.OPEN) return;
+      const inputData = event.inputBuffer.getChannelData(0);
+      const down = downsample(inputData, audioContext.sampleRate, 16000);
+      const pcm = toInt16(down);
+      ws.send(pcm.buffer);
+    };
+
+    source.connect(processor);
+    processor.connect(audioContext.destination);
+
+    isRecording = true;
+    startBtn.disabled = true;
+    stopBtn.disabled = false;
+    log('开始录音');
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      handleAsrMessage(data);
+    } catch (e) {
+      log(`消息解析失败: ${e.message}`);
+    }
+  };
+
+  ws.onerror = () => {
+    log('WebSocket 连接错误');
+  };
+
+  ws.onclose = () => {
+    statusEl.textContent = '已断开';
+    startBtn.disabled = false;
+    stopBtn.disabled = true;
+    log('连接关闭');
+  };
+}
+
+async function stopRecord() {
+  isRecording = false;
+
+  if (processor) {
+    processor.disconnect();
+    processor = null;
+  }
+  if (source) {
+    source.disconnect();
+    source = null;
+  }
+  if (audioContext) {
+    await audioContext.close();
+    audioContext = null;
+  }
+  if (stream) {
+    stream.getTracks().forEach((t) => t.stop());
+    stream = null;
+  }
+
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({ is_speaking: false, mode: '2pass' }));
+    setTimeout(() => {
+      if (ws && ws.readyState === WebSocket.OPEN) ws.close();
+    }, 800);
+  }
+
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+  log('停止录音');
+}
+
+startBtn.addEventListener('click', async () => {
+  try {
+    await startRecord();
+  } catch (e) {
+    log(`启动失败: ${e.message}`);
+  }
+});
+stopBtn.addEventListener('click', stopRecord);
+</script>
+</body>
+</html>

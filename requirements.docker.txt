@@ -1,0 +1,11 @@
+# Direct dependencies used by the ASR gateway, pinned to the versions verified
+# in the current production Python environment on 2026-07-17.
+aiohttp==3.11.10
+dashscope==1.25.19
+openpyxl==3.1.5
+pika==1.4.0
+psycopg2-binary==2.9.12
+pypinyin==0.55.0
+jieba==0.42.1
+webrtcvad-wheels==2.0.14
+websockets==16.0

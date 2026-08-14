@@ -1,0 +1,13 @@
+# ASR-LOC-06 楼栋、单元与房间
+# 一级分类: ASR-LOC 地点与地址
+# 适用: yes
+# 热词数: 7
+# 由 generate_taxonomy_hotwords.py 生成，请勿手工编辑。
+
+单元
+房间
+商铺
+楼栋
+店铺
+办公室
+宿舍

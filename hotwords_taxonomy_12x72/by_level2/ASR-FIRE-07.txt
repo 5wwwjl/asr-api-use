@@ -1,0 +1,10 @@
+# ASR-FIRE-07 爆炸与危险征兆
+# 一级分类: ASR-FIRE 火灾表达
+# 适用: yes
+# 热词数: 4
+# 由 generate_taxonomy_hotwords.py 生成，请勿手工编辑。
+
+爆炸
+爆炸声
+炸了
+要爆

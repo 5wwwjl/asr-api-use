@@ -1,0 +1,6 @@
+# ASR-LOC-10 同音与近音地名
+# 一级分类: ASR-LOC 地点与地址
+# 适用: no
+# 热词数: 0
+# 由 generate_taxonomy_hotwords.py 生成，请勿手工编辑。
+

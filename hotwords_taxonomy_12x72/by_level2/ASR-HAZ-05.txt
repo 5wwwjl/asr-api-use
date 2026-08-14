@@ -1,0 +1,6 @@
+# ASR-HAZ-05 消防设施状态
+# 一级分类: ASR-HAZ 危险物、燃烧物与消防设施
+# 适用: yes
+# 热词数: 0
+# 由 generate_taxonomy_hotwords.py 生成，请勿手工编辑。
+

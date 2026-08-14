@@ -1,0 +1,13 @@
+# ASR-SCENE-08 高空救援
+# 一级分类: ASR-SCENE 其他警情专业表达
+# 适用: yes
+# 热词数: 7
+# 由 generate_taxonomy_hotwords.py 生成，请勿手工编辑。
+
+楼顶
+电线杆
+树上
+屋顶
+天台
+铁塔
+广告牌

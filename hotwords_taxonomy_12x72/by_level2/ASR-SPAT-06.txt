@@ -1,0 +1,10 @@
+# ASR-SPAT-06 边界与入口
+# 一级分类: ASR-SPAT 方位、距离与空间表达
+# 适用: yes
+# 热词数: 4
+# 由 generate_taxonomy_hotwords.py 生成，请勿手工编辑。
+
+南门
+东门
+北门
+西门

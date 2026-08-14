@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ASR 动态热词增强演示</title>
+<style>
+:root{--bg:#f3f6fa;--panel:#fff;--ink:#172033;--muted:#667085;--line:#dfe5ec;--blue:#175cd3;--blue-soft:#eff4ff;--green:#067647;--green-soft:#ecfdf3;--amber:#b54708;--amber-soft:#fffaeb;--red:#b42318;--shadow:0 8px 24px rgba(16,24,40,.07)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.55 Inter,"PingFang SC","Microsoft YaHei",sans-serif}
+button,input,select{font:inherit}.topbar{height:72px;padding:0 28px;background:#101828;color:#fff;display:flex;align-items:center;justify-content:space-between}
+.brand h1{font-size:20px;margin:0}.brand p{margin:3px 0 0;color:#98a2b3;font-size:12px}.live{display:flex;align-items:center;gap:8px;color:#d0d5dd}.live i{width:8px;height:8px;border-radius:50%;background:#12b76a;box-shadow:0 0 0 4px rgba(18,183,106,.15)}
+.shell{padding:20px 24px 28px;max-width:1800px;margin:auto}.command{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;box-shadow:var(--shadow)}
+.command-title{font-weight:700;margin-right:auto}.file-label,.btn{border:1px solid var(--line);background:#fff;border-radius:7px;padding:9px 13px;cursor:pointer;font-weight:600;color:#344054}.file-label:hover,.btn:hover{border-color:#98a2b3}.file-label input{display:none}.btn.primary{background:var(--blue);border-color:var(--blue);color:#fff}.btn.danger{background:#fff;color:var(--red)}.btn:disabled{opacity:.45;cursor:not-allowed}.audio-name{max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted)}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 390px;gap:16px;align-items:start}.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);overflow:hidden}.panel-head{padding:15px 17px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center}.panel-title{font-size:16px;font-weight:750}.mode{font-size:12px;padding:4px 8px;border-radius:999px;background:#f2f4f7;color:#475467}.mode.dynamic{background:var(--green-soft);color:var(--green)}
+.transcript{min-height:390px;padding:22px;font-size:22px;line-height:1.85;letter-spacing:.02em}.placeholder{color:#98a2b3;font-size:15px}.result-meta{border-top:1px solid var(--line);padding:13px 17px;display:grid;grid-template-columns:1fr 1fr;gap:8px;color:var(--muted)}.metric strong{display:block;color:var(--ink);font-size:16px;margin-top:2px}.live-text{white-space:pre-wrap}.diff-ordinary,.diff-dynamic{border-radius:4px;padding:1px 2px;font-weight:750}.diff-ordinary{background:#fee4e2;color:#b42318}.diff-dynamic{background:#d1fadf;color:#05603a}
+.side{display:flex;flex-direction:column;gap:12px}.step{background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);overflow:hidden}.step-head{padding:13px 14px;border-bottom:1px solid var(--line);display:flex;gap:10px;align-items:center}.step-num{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:#eaecf0;color:#475467;font-weight:800}.step.done .step-num{background:var(--green);color:#fff}.step-title{font-weight:750}.step-body{padding:14px}.action{width:100%;border:0;border-radius:7px;padding:10px 12px;background:#175cd3;color:#fff;font-weight:700;cursor:pointer}.action:disabled{background:#d0d5dd;cursor:not-allowed}.detail{margin-top:12px;background:#f8fafc;border:1px solid #eaecf0;border-radius:7px;padding:10px 11px;color:#475467;white-space:pre-line}.detail b{color:#101828}.form-row{display:grid;grid-template-columns:92px 1fr;align-items:center;gap:8px;margin-bottom:9px}.form-row label{color:#475467}.form-row select{min-width:0;border:1px solid #d0d5dd;border-radius:6px;background:#fff;padding:7px}
+.libraries{padding:13px 16px;border-top:1px solid var(--line)}.libraries h3,.hotword-browser h3{font-size:13px;margin:0 0 9px;color:#475467}.chips{display:flex;gap:6px;flex-wrap:wrap}.chip{padding:4px 8px;border-radius:5px;background:var(--blue-soft);color:#1849a9;font-size:12px}.chip.address{background:var(--amber-soft);color:var(--amber)}
+.hotword-browser{padding:13px 16px 16px;border-top:1px solid var(--line)}.hotword-tools{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:10px}.hotword-heading h3{margin-bottom:2px}.hotword-summary{color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}.hotword-search{width:210px;border:1px solid #d0d5dd;border-radius:6px;background:#fff;padding:7px 9px;color:var(--ink)}.hotword-search:focus-visible{outline:2px solid var(--blue);outline-offset:2px}.hotword-search:disabled{background:#f2f4f7;color:#98a2b3}.hotword-list{max-height:260px;overflow:auto;border:1px solid #eaecf0;border-radius:7px;background:#f8fafc;padding:7px;display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px}.hotword-item{min-width:0;border:1px solid #eaecf0;border-radius:5px;background:#fff;padding:6px 8px;display:flex;align-items:center;justify-content:space-between;gap:8px}.hotword-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#344054}.hotword-weight{flex:none;color:#667085;font-size:11px;font-variant-numeric:tabular-nums}.hotword-empty{grid-column:1/-1;padding:16px;color:#667085;text-align:center}.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}.toast{position:fixed;right:24px;bottom:24px;background:#101828;color:#fff;padding:11px 14px;border-radius:7px;box-shadow:var(--shadow);display:none;z-index:10}.busy{animation:pulse 1.2s infinite}@keyframes pulse{50%{opacity:.45}}@media(prefers-reduced-motion:reduce){.busy{animation:none}}
+@media(max-width:1200px){.grid{grid-template-columns:1fr 1fr}.side{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr)}}@media(max-width:760px){.topbar{height:auto;padding:16px}.shell{padding:12px}.command{align-items:stretch;flex-direction:column}.command-title{margin:0}.grid{grid-template-columns:1fr}.side{grid-column:auto;display:flex}.transcript{min-height:220px}.audio-name{max-width:100%}.hotword-tools{align-items:stretch;flex-direction:column}.hotword-search{width:100%}}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><h1>ASR 动态热词增强演示</h1><p>同一模型 · 同一音频 · 仅对比是否加载动态热词 · 暂不启用后置纠错</p></div>
+  <div class="live"><i></i><span id="systemStatus">演示服务待初始化</span></div>
+</header>
+<main class="shell">
+  <section class="command">
+    <div class="command-title">实时双路原始转写 · 同一麦克风音频同步发送到 8443</div>
+    <span class="audio-name" id="liveStatus">等待开始</span>
+    <button class="btn primary" id="recordBtn">开始双路实时转写</button>
+  </section>
+
+  <div class="grid">
+    <section class="panel">
+      <div class="panel-head"><div class="panel-title">普通 ASR 原始转写</div><span class="mode">热词 0 条</span></div>
+      <div class="transcript" id="ordinaryText"><span class="placeholder">点击“开始双路实时转写”后，两边将同步显示。</span></div>
+      <div class="result-meta"><div class="metric">识别模式<strong>无热词 · 未纠错</strong></div><div class="metric">实时状态<strong id="ordinaryMs">待连接</strong></div></div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><div class="panel-title">动态热词 ASR 原始转写</div><span class="mode dynamic" id="dynamicMode">热词 — 条</span></div>
+      <div class="transcript" id="dynamicText"><span class="placeholder">动态热词将在下一语音段开始时随握手发送到 FunASR。</span></div>
+      <div class="result-meta"><div class="metric">识别模式<strong>动态增强 · 未纠错</strong></div><div class="metric">实时状态<strong id="dynamicMs">待连接</strong></div></div>
+      <div class="libraries"><h3>当前选中的热词库</h3><div class="chips" id="libraryChips"><span class="placeholder">尚未初始化</span></div></div>
+      <div class="hotword-browser">
+        <div class="hotword-tools">
+          <div class="hotword-heading"><h3>当前加载的热词明细</h3><div class="hotword-summary" id="hotwordSummary" aria-live="polite">请先开始模拟来电</div></div>
+          <div><label class="sr-only" for="hotwordSearch">搜索当前加载的热词</label><input class="hotword-search" id="hotwordSearch" type="search" placeholder="搜索热词" disabled></div>
+        </div>
+        <div class="hotword-list" id="hotwordList" role="list"><div class="hotword-empty">开始模拟来电后显示完整热词。</div></div>
+      </div>
+    </section>
+
+    <aside class="side">
+      <section class="step" id="step1">
+        <div class="step-head"><span class="step-num">1</span><span class="step-title">开始模拟来电</span></div>
+        <div class="step-body"><button class="action" id="startBtn">开始模拟来电</button><div class="detail" id="startDetail">等待操作</div></div>
+      </section>
+      <section class="step" id="step2">
+        <div class="step-head"><span class="step-num">2</span><span class="step-title">真实基站定位</span></div>
+        <div class="step-body"><button class="action" id="locationBtn" disabled>加载真实基站地址</button><div class="detail" id="locationDetail">请先开始模拟来电</div></div>
+      </section>
+      <section class="step" id="step3">
+        <div class="step-head"><span class="step-num">3</span><span class="step-title">模拟场景信号</span></div>
+        <div class="step-body">
+          <div class="form-row"><label>来电分类</label><select id="callType"><option value="fire_fighting">火灾扑救</option><option value="social_assistance">社会救助</option><option value="emergency_rescue">抢险救援</option></select></div>
+          <div class="form-row"><label>建筑类型</label><select id="buildingUsage"><option value="residential_commercial_hotel">住宅商业酒店</option><option value="crowded_place">人员密集场所</option><option value="industrial_storage_site">工业仓储场所</option><option value="medical_eldercare">医疗养老场所</option><option value="education_training">教育培训场所</option><option value="">不选择</option></select></div>
+          <div class="form-row"><label>建筑结构</label><select id="buildingStructure"><option value="highrise_multistory">高层多层</option><option value="underground">地下空间</option><option value="open_air">露天区域</option><option value="">不选择</option></select></div>
+          <button class="action" id="sceneBtn" disabled>应用场景信号</button><div class="detail" id="sceneDetail">请先开始模拟来电</div>
+        </div>
+      </section>
+    </aside>
+  </div>
+</main>
+<div class="toast" id="toast"></div>
+<script src="/hotword_demo_transcript.js?v=20260810-2"></script>
+<script>
+const LIVE_CHANNELS=['ordinary','dynamic'];
+const state={sessionId:'',stream:null,audioCtx:null,processor:null,source:null,audioTimeMs:0,liveCallId:'',addressReady:false,addressCallReady:false,sceneSignals:null,running:false,hotwords:[],handshakeTokenCount:0,live:{ordinary:{ws:null,callId:'',seq:0,generation:0,transcript:HotwordTranscript.createState(),text:''},dynamic:{ws:null,callId:'',seq:0,generation:0,transcript:HotwordTranscript.createState(),text:''}}};
+const $=id=>document.getElementById(id);
+function fmt(ms){return Number.isFinite(Number(ms))?`${Number(ms).toFixed(2)} ms`:'—'}
+function esc(value){const node=document.createElement('span');node.textContent=value??'';return node.innerHTML}
+function toast(message){$('toast').textContent=message;$('toast').style.display='block';setTimeout(()=>$('toast').style.display='none',2600)}
+async function api(path,options={}){const response=await fetch(path,options);const data=await response.json();if(!response.ok)throw new Error(data.error||`HTTP ${response.status}`);return data}
+function renderSnapshot(data){
+  $('dynamicMode').textContent=`热词 ${data.hotwordCount} 条`;
+  $('libraryChips').innerHTML=data.libraries.map(lib=>`<span class="chip ${lib.id.startsWith('address.scope:')?'address':''}">${esc(lib.name)}</span>`).join('');
+  state.hotwords=Array.isArray(data.hotwords)?data.hotwords:[];state.handshakeTokenCount=Number(data.handshakeTokenCount)||0;$('hotwordSearch').disabled=!state.hotwords.length;renderHotwords();
+}
+function renderHotwords(){const query=$('hotwordSearch').value.trim().toLocaleLowerCase('zh-CN'),visible=query?state.hotwords.filter(item=>String(item.text||'').toLocaleLowerCase('zh-CN').includes(query)):state.hotwords;$('hotwordSummary').textContent=`配置 ${state.hotwords.length.toLocaleString()} 条 · 模型握手 ${state.handshakeTokenCount.toLocaleString()} token${query?` · 匹配 ${visible.length.toLocaleString()} 条`:''}`;$('hotwordList').innerHTML=visible.length?visible.map(item=>`<div class="hotword-item" role="listitem"><span class="hotword-text">${esc(item.text)}</span><span class="hotword-weight">${item.weight==null?'权重 —':`权重 ${Number(item.weight).toLocaleString()}`}</span></div>`).join(''):`<div class="hotword-empty">未找到匹配热词，请调整搜索条件。</div>`}
+function renderAddressSnapshot(data){
+  renderSnapshot(data);const a=data.address;state.liveCallId=a.callId||state.liveCallId;state.addressReady=true;state.addressCallReady=true;$('step2').classList.add('done');
+  const examples=(a.examples||[]).map((item,index)=>`${index+1}. ${item.text}`).join('\n');
+  $('locationDetail').innerHTML=`<b>真实基站定位完成</b>\n\n环境：<b>167真实地址库</b>\n坐标：${a.longitude.toFixed(8)}, ${a.latitude.toFixed(8)}\n半径：${a.radiusMeters.toLocaleString()} 米\n库存：${esc(a.inventoryVersion)}\n\nscopeId：${esc(a.scopeId.slice(0,13))}...\n地址小表查询成功\n地址记录：<b>${a.itemCount.toLocaleString()} 条</b>\n地址候选：<b>${a.candidateCount.toLocaleString()} 条</b>\n去重候选：<b>${a.uniqueCandidateCount.toLocaleString()} 条</b>\n最终选取：<b>${a.selectedAddressCount.toLocaleString()} 条</b>\n\n定位耗时：<b>${fmt(a.resolutionMs)}</b>\n小表查询耗时：<b>${fmt(a.queryMs)}</b>\n筛选加载耗时：<b>${fmt(a.processingMs)}</b>\n状态：当前录音会话已绑定${examples?`\n\n<b>可直接朗读：</b>\n${esc(examples)}`:''}`;
+}
+function setBusy(button,busy,label){button.disabled=busy;if(busy){button.dataset.label=button.textContent;button.textContent=label;button.classList.add('busy')}else{button.textContent=button.dataset.label||button.textContent;button.classList.remove('busy')}}
+function downsample(buffer,inputRate,outputRate=16000){if(inputRate===outputRate)return buffer;const ratio=inputRate/outputRate;const length=Math.round(buffer.length/ratio);const out=new Float32Array(length);for(let i=0;i<length;i++){const start=Math.round(i*ratio),end=Math.round((i+1)*ratio);let sum=0,count=0;for(let j=start;j<end&&j<buffer.length;j++){sum+=buffer[j];count++}out[i]=count?sum/count:0}return out}
+function toInt16(input){const out=new Int16Array(input.length);for(let i=0;i<input.length;i++){const value=Math.max(-1,Math.min(1,input[i]));out[i]=value<0?value*32768:value*32767}return out}
+function pcmToBase64(pcm){const bytes=new Uint8Array(pcm.buffer,pcm.byteOffset,pcm.byteLength);let binary='';for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));return btoa(binary)}
+function bridgeEvent(channel,eventType,payload={}){const live=state.live[channel];live.seq+=1;const event={schemaVersion:'1.0',eventId:`evt-${live.callId}-${String(live.seq).padStart(6,'0')}`,eventType,callId:live.callId,streamId:'stream-main',seq:live.seq,timestampMs:state.audioTimeMs,sendTimeMs:Date.now(),sourceSystem:'hotword-demo-browser',payload};if(eventType==='scene_signal.add')event.signals=payload.signals;return event}
+function sendBridge(channel,eventType,payload={}){const ws=state.live[channel].ws;if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(bridgeEvent(channel,eventType,payload)))}
+function diffHtml(left,right,side){const a=[...left],b=[...right],dp=Array.from({length:a.length+1},()=>new Uint16Array(b.length+1));for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]+1:Math.max(dp[i-1][j],dp[i][j-1]);const matched=new Set();let i=a.length,j=b.length;while(i&&j){if(a[i-1]===b[j-1]){matched.add(side==='ordinary'?i-1:j-1);i--;j--}else if(dp[i-1][j]>=dp[i][j-1])i--;else j--}const chars=side==='ordinary'?a:b;return chars.map((char,index)=>matched.has(index)?esc(char):`<span class="diff-${side}">${esc(char)}</span>`).join('')}
+function renderPair(){const ordinary=state.live.ordinary.text,dynamic=state.live.dynamic.text;$('ordinaryText').innerHTML=ordinary?`<span class="live-text">${diffHtml(ordinary,dynamic,'ordinary')}</span>`:'<span class="placeholder busy">普通 ASR 等待结果...</span>';$('dynamicText').innerHTML=dynamic?`<span class="live-text">${diffHtml(ordinary,dynamic,'dynamic')}</span>`:'<span class="placeholder busy">动态热词 ASR 等待结果...</span>'}
+function updateLiveText(channel,data){const live=state.live[channel],text=HotwordTranscript.applyMessage(live.transcript,data);if(text===null)return;live.text=text;$(`${channel}Ms`).textContent='转写中';renderPair()}
+function connectLive(channel,callId){const live=state.live[channel],generation=live.generation+1;live.generation=generation;live.callId=callId;live.seq=0;live.transcript=HotwordTranscript.createState();live.text='';const endpoint=channel==='ordinary'?'asr-plain':'asr-dynamic';const url=`wss://${location.hostname}:8443/${endpoint}?callId=${encodeURIComponent(callId)}&callfrom=micro&callto=119&project=firebot`;return new Promise((resolve,reject)=>{const ws=new WebSocket(url);live.ws=ws;let settled=false;const fail=error=>{if(settled)return;settled=true;reject(error)};const timer=setTimeout(()=>{try{ws.close(4000,'connect timeout')}catch(_){}fail(new Error(`${channel} 连接超时`))},6000);ws.onopen=()=>{if(live.ws!==ws||live.generation!==generation){ws.close(1000,'stale connection');fail(new Error(`${channel} 连接已过期`));return}clearTimeout(timer);settled=true;resolve()};ws.onmessage=event=>{if(live.ws!==ws||live.generation!==generation)return;try{updateLiveText(channel,JSON.parse(event.data))}catch(_){}};ws.onerror=()=>{clearTimeout(timer);fail(new Error(`${channel} 连接失败`))};ws.onclose=()=>{clearTimeout(timer);const current=live.ws===ws&&live.generation===generation;if(current)live.ws=null;if(!settled)fail(new Error(`${channel} 连接已关闭`));if(current&&state.running){$(`${channel}Ms`).textContent='已断开';$('systemStatus').textContent='部分实时连接已断开'}}})}
+async function closeLiveSocket(channel,drainMs=1800){const live=state.live[channel],ws=live.ws;if(!ws)return;if(ws.readyState===WebSocket.OPEN){try{ws.send(JSON.stringify(bridgeEvent(channel,'call.ended')))}catch(_){}}if(drainMs>0)await new Promise(resolve=>setTimeout(resolve,drainMs));const closed=new Promise(resolve=>{if(ws.readyState===WebSocket.CLOSED){resolve();return}ws.addEventListener('close',resolve,{once:true});setTimeout(resolve,1000)});try{if(ws.readyState===WebSocket.OPEN||ws.readyState===WebSocket.CONNECTING)ws.close(1000,'demo run ended')}catch(_){}await closed;if(live.ws===ws)live.ws=null}
+async function closeAllLiveSockets(drainMs=1800){await Promise.all(LIVE_CHANNELS.map(channel=>closeLiveSocket(channel,drainMs)))}
+async function prepareDynamicCallId(){const fallback=`hotword-demo-${Date.now()}-${Math.random().toString(16).slice(2)}`;if(!state.addressReady||!state.sessionId)return fallback;if(state.addressCallReady&&state.liveCallId){state.addressCallReady=false;return state.liveCallId}const data=await api('/api/hotword-demo/address',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:state.sessionId})});renderAddressSnapshot(data);state.addressCallReady=false;return data.address.callId||fallback}
+async function stopLiveTranscription(drainMs=1800){state.running=false;if(state.processor){state.processor.disconnect();state.processor=null}if(state.source){state.source.disconnect();state.source=null}if(state.audioCtx){await state.audioCtx.close();state.audioCtx=null}if(state.stream){state.stream.getTracks().forEach(track=>track.stop());state.stream=null}await closeAllLiveSockets(drainMs);$('recordBtn').textContent='开始双路实时转写';$('recordBtn').classList.remove('danger');$('liveStatus').textContent='已停止';$('systemStatus').textContent='双路实时转写已停止'}
+async function startLiveTranscription(){const button=$('recordBtn');button.disabled=true;button.textContent=state.addressReady?'正在刷新真实地址绑定...':'正在建立两路 8443 连接...';state.audioTimeMs=0;try{await closeAllLiveSockets(0);const dynamicCallId=await prepareDynamicCallId(),ordinaryCallId=`${dynamicCallId}-ordinary-${Date.now()}`;button.textContent='正在建立两路 8443 连接...';state.stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true}});await Promise.all([connectLive('ordinary',ordinaryCallId),connectLive('dynamic',dynamicCallId)]);sendBridge('ordinary','call.started');sendBridge('dynamic','call.started');if(state.sceneSignals)sendBridge('dynamic','scene_signal.add',{signals:state.sceneSignals});state.audioCtx=new(window.AudioContext||window.webkitAudioContext)();state.source=state.audioCtx.createMediaStreamSource(state.stream);state.processor=state.audioCtx.createScriptProcessor(4096,1,1);state.processor.onaudioprocess=event=>{if(!state.running)return;const pcm=toInt16(downsample(event.inputBuffer.getChannelData(0),state.audioCtx.sampleRate));const frameDurationMs=Math.max(1,Math.round(pcm.length*1000/16000)),startTimeMs=state.audioTimeMs;state.audioTimeMs+=frameDurationMs;const payload={speaker:'caller',direction:'inbound',startTimeMs,endTimeMs:state.audioTimeMs,codec:'pcm_s16le',sampleRate:16000,channels:1,frameDurationMs,audioBase64:pcmToBase64(pcm),callfrom:'micro',callto:'119'};sendBridge('ordinary','audio.frame',payload);sendBridge('dynamic','audio.frame',payload)};state.source.connect(state.processor);state.processor.connect(state.audioCtx.destination);state.running=true;renderPair();$('ordinaryMs').textContent='已连接';$('dynamicMs').textContent='已连接';$('liveStatus').textContent='同一音频正在同步识别';$('systemStatus').textContent='8443 双路实时转写中';button.textContent='停止双路实时转写';button.classList.add('danger')}catch(error){toast(`双路实时转写启动失败：${error.message}`);await stopLiveTranscription(0)}finally{button.disabled=false}}
+
+$('startBtn').onclick=async()=>{
+  const button=$('startBtn');setBusy(button,true,'正在预加载...');
+  try{
+    const data=await api('/api/hotword-demo/start',{method:'POST'});state.sessionId=data.sessionId;state.addressReady=false;state.addressCallReady=false;state.liveCallId='';renderSnapshot(data);$('step2').classList.remove('done');
+    $('step1').classList.add('done');$('locationBtn').disabled=false;$('sceneBtn').disabled=false;$('systemStatus').textContent='模拟来电已建立';
+    $('startDetail').innerHTML=`<b>模拟来电已建立</b>\n\n已预加载：\n✓ 基础热词库\n✓ 来电分类辅助热词库\n\n初始热词：<b>${data.hotwordCount} 条</b>\n预加载耗时：<b>${fmt(data.elapsedMs)}</b>`;
+    toast('预置热词加载完成');
+  }catch(error){toast(`初始化失败：${error.message}`)}finally{setBusy(button,false)}
+};
+
+$('locationBtn').onclick=async()=>{
+  const button=$('locationBtn');setBusy(button,true,'正在请求真实定位...');
+  try{
+    const data=await api('/api/hotword-demo/address',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:state.sessionId})});renderAddressSnapshot(data);$('systemStatus').textContent='167真实基站地址热词已就绪';
+    toast('真实基站地址热词准备完成');
+  }catch(error){$('locationDetail').innerHTML=`<b>真实基站定位失败</b>\n\n${esc(error.message)}\n请确认167真实定位服务和只读地址库可用。`;toast(`真实基站定位失败：${error.message}`)}finally{setBusy(button,false)}
+};
+
+$('sceneBtn').onclick=async()=>{
+  const button=$('sceneBtn');setBusy(button,true,'正在选择词库...');
+  const signals={call_type:[$('callType').value]};if($('buildingUsage').value)signals.building_usage=[$('buildingUsage').value];if($('buildingStructure').value)signals.building_structure=[$('buildingStructure').value];
+  try{
+    state.sceneSignals=signals;
+    const data=await api('/api/hotword-demo/scene',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:state.sessionId,signals})});renderSnapshot(data);
+    if(state.live.dynamic.ws?.readyState===WebSocket.OPEN)sendBridge('dynamic','scene_signal.add',{signals});
+    $('step3').classList.add('done');$('systemStatus').textContent='场景热词已就绪';
+    const names=data.libraries.map(item=>`✓ ${item.name}`).join('\n');
+    $('sceneDetail').innerHTML=`<b>场景信号处理完成</b>\n\n${esc(names)}\n\n最终热词：<b>${data.hotwordCount.toLocaleString()} 条</b>\n处理耗时：<b>${fmt(data.elapsedMs)}</b>\n是否截断：<b>${data.truncated?'是':'否'}</b>\n状态：下一句话生效`;
+    toast('场景热词库选择完成');
+  }catch(error){toast(`场景信号失败：${error.message}`)}finally{setBusy(button,false)}
+};
+
+$('recordBtn').onclick=async()=>{const button=$('recordBtn');if(button.disabled)return;if(state.running){button.disabled=true;button.textContent='正在结束两路转写...';try{await stopLiveTranscription()}finally{button.disabled=false}}else await startLiveTranscription()};
+$('hotwordSearch').addEventListener('input',renderHotwords);
+window.addEventListener('beforeunload',()=>{state.running=false;for(const channel of LIVE_CHANNELS){const live=state.live[channel],ws=live.ws;if(ws?.readyState===WebSocket.OPEN){try{ws.send(JSON.stringify(bridgeEvent(channel,'call.ended')))}catch(_){}}try{ws?.close()}catch(_){}}if(state.stream)state.stream.getTracks().forEach(track=>track.stop())});
+</script>
+</body>
+</html>

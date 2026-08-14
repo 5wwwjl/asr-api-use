@@ -1,0 +1,1 @@
+/home/twai/xhw/FunASR/server/funasr-runtime-resources/models/hotwords.txt

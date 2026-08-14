@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASR 模型 A/B 对比</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font:16px/1.5 system-ui,sans-serif;background:#0a1628;color:#e0f0ff;min-height:100vh}
+.header{background:linear-gradient(90deg,#0d3b66,#0a1628);padding:20px 24px;border-bottom:1px solid #1a3a5c}
+.header h1{font-size:22px}
+.header p{color:#7eb8da;font-size:14px;margin-top:4px}
+.container{max-width:900px;margin:0 auto;padding:24px}
+.controls{display:flex;gap:12px;align-items:center;margin-bottom:24px;flex-wrap:wrap}
+.btn{padding:12px 24px;border:none;border-radius:8px;font-size:16px;cursor:pointer;font-weight:600;transition:.2s}
+.btn-record{background:#e74c3c;color:#fff}
+.btn-record.recording{background:#c0392b;animation:pulse 1s infinite}
+.btn-stop{background:#7f8c8d;color:#fff;display:none}
+.btn-clear{background:transparent;border:1px solid #2a4a6c;color:#7eb8da}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+.status{font-size:14px;color:#7eb8da;margin-left:8px}
+.compare-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{background:#0d1f33;border:1px solid #1a3a5c;border-radius:10px;overflow:hidden}
+.card-header{padding:14px 18px;font-weight:700;font-size:15px;border-bottom:1px solid #1a3a5c;display:flex;align-items:center;gap:8px}
+.card-header .dot{width:10px;height:10px;border-radius:50%}
+.dot-original{background:#3498db}
+.dot-finetuned{background:#2ecc71}
+.card-body{padding:16px;min-height:120px}
+.card-body .transcript{font-size:20px;line-height:1.6;word-break:break-word}
+.card-body .placeholder{color:#3a5a7c;font-style:italic}
+.badge{padding:3px 8px;border-radius:4px;font-size:11px;font-weight:700}
+.badge-original{background:rgba(52,152,219,.2);color:#3498db}
+.badge-finetuned{background:rgba(46,204,113,.2);color:#2ecc71}
+audio{width:100%;margin-top:12px}
+.footer{margin-top:16px;color:#3a5a7c;font-size:12px;text-align:center}
+.highlight{background:rgba(46,204,113,.15);border-radius:3px;padding:0 2px}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>ASR 模型 A/B 对比</h1>
+  <p>同一段语音 → 原始模型 vs 微调模型</p>
+</div>
+<div class="container">
+  <div class="controls">
+    <button class="btn btn-record" id="btnRecord" onclick="startRecord()">开始录音</button>
+    <button class="btn btn-stop" id="btnStop" onclick="stopAndCompare()">停止并对比</button>
+    <button class="btn btn-clear" onclick="clearAll()">清除</button>
+    <span class="status" id="status">点"开始录音"对着麦克风说话</span>
+  </div>
+  <div class="compare-grid">
+    <div class="card">
+      <div class="card-header">
+        <span class="dot dot-original"></span> 原始模型 (Paraformer-large-contextual)
+        <span class="badge badge-original">GPU 10099</span>
+      </div>
+      <div class="card-body">
+        <div class="transcript" id="resultOriginal"><span class="placeholder">等待录音...</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <span class="dot dot-finetuned"></span> 微调模型 (消防场景)
+        <span class="badge badge-finetuned">GPU 10097</span>
+      </div>
+      <div class="card-body">
+        <div class="transcript" id="resultFinetuned"><span class="placeholder">等待录音...</span></div>
+      </div>
+    </div>
+  </div>
+  <audio id="playback" controls style="display:none;margin-top:16px;width:100%"></audio>
+  <div class="footer">录音通过 WebSocket 同时发送到两个 ASR 模型。微调数据：天津消防接处警 ~14K 条，5 epoch。</div>
+</div>
+
+<script>
+let mediaRecorder, audioChunks = [], stream;
+const WS_URL = (location.protocol==='https:'?'wss':'ws')+'://'+location.host;
+
+async function startRecord(){
+  audioChunks=[];
+  try{
+    stream=await navigator.mediaDevices.getUserMedia({audio:{sampleRate:16000,channelCount:1}});
+    mediaRecorder=new MediaRecorder(stream,{mimeType:'audio/webm;codecs=opus'});
+    mediaRecorder.ondataavailable=e=>audioChunks.push(e.data);
+    mediaRecorder.onstop=()=>sendToCompare();
+    mediaRecorder.start();
+    document.getElementById('btnRecord').classList.add('recording');
+    document.getElementById('btnRecord').textContent='录音中...';
+    document.getElementById('btnStop').style.display='inline-block';
+    document.getElementById('status').textContent='正在录音，请说话...';
+    document.getElementById('resultOriginal').innerHTML='<span class="placeholder">录音中...</span>';
+    document.getElementById('resultFinetuned').innerHTML='<span class="placeholder">录音中...</span>';
+  }catch(e){
+    document.getElementById('status').textContent='无法访问麦克风: '+e.message;
+  }
+}
+
+function stopAndCompare(){
+  if(mediaRecorder&&mediaRecorder.state!=='inactive'){
+    mediaRecorder.stop();
+    stream.getTracks().forEach(t=>t.stop());
+    document.getElementById('btnRecord').classList.remove('recording');
+    document.getElementById('btnRecord').textContent='开始录音';
+    document.getElementById('btnStop').style.display='none';
+    document.getElementById('status').textContent='正在转写，请稍候...';
+    // Show playback
+    const blob=new Blob(audioChunks,{type:'audio/webm'});
+    const url=URL.createObjectURL(blob);
+    const audio=document.getElementById('playback');
+    audio.src=url;audio.style.display='block';
+  }
+}
+
+async function sendToCompare(){
+  const blob=new Blob(audioChunks,{type:'audio/webm'});
+  const form=new FormData();
+  form.append('audio',blob,'recording.webm');
+
+  document.getElementById('status').textContent='正在转写...';
+
+  try{
+    const resp=await fetch('/compare',{method:'POST',body:form});
+    const data=await resp.json();
+    document.getElementById('resultOriginal').textContent=data.original||'(无结果)';
+    document.getElementById('resultFinetuned').textContent=data.finetuned||'(无结果)';
+    document.getElementById('status').textContent='转写完成';
+    highlightDiff(data.original||'',data.finetuned||'');
+  }catch(e){
+    document.getElementById('resultOriginal').innerHTML='<span class="placeholder">请求失败</span>';
+    document.getElementById('resultFinetuned').innerHTML='<span class="placeholder">请求失败</span>';
+    document.getElementById('status').textContent='转写失败: '+e.message;
+  }
+}
+
+function highlightDiff(orig,fine){
+  // Simple: if texts differ, highlight the fine-tuned result
+  if(orig!==fine&&fine){
+    document.getElementById('resultFinetuned').innerHTML='<span class="highlight">'+escHtml(fine)+'</span>';
+  }
+}
+
+function clearAll(){
+  document.getElementById('resultOriginal').innerHTML='<span class="placeholder">等待录音...</span>';
+  document.getElementById('resultFinetuned').innerHTML='<span class="placeholder">等待录音...</span>';
+  document.getElementById('playback').style.display='none';
+  document.getElementById('status').textContent='点"开始录音"对着麦克风说话';
+  audioChunks=[];
+}
+
+function escHtml(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+</script>
+</body>
+</html>

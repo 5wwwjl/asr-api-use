@@ -1,0 +1,58 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+certs/
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+
+# Runtime data
+logs/
+recordings/
+audio_data/
+reports/
+*.log
+*.pid
+
+# Evaluation audio and generated results
+*.wav
+*.pcm
+*.mp3
+web/guizhou_eval/results.json
+
+# Local snapshots and change captures
+snapshots/
+diff/
+
+# Backups and duplicate work trees
+*.orig
+*.bak
+*.bak_*
+test_model/
+
+# Large local/vendor artifacts
+华为语音/
+*.chm
+*.tar
+*.tar.gz
+*.zip
+
+# IDE and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+

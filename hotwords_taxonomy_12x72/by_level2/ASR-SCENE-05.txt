@@ -1,0 +1,12 @@
+# ASR-SCENE-05 溺水与水域救援
+# 一级分类: ASR-SCENE 其他警情专业表达
+# 适用: yes
+# 热词数: 6
+# 由 generate_taxonomy_hotwords.py 生成，请勿手工编辑。
+
+水域救援
+溺水
+落水
+掉河
+掉水
+掉进水

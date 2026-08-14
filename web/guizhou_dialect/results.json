@@ -1,0 +1,85 @@
+{
+  "metadata": {
+    "title": "贵州方言 ASR 机器初标",
+    "dataset": "真实贵州方言电话录音（用户指定5条）",
+    "provider": "科大讯飞方言识别大模型",
+    "modelConfig": "language=zh_cn, accent=mulacc, domain=slm",
+    "generatedAt": "2026-07-23",
+    "labelStatus": "machine_unverified",
+    "notice": "讯飞转写为机器初标，未经人工校对，不是准确率标签；未经过地址纠错、规则高亮或LLM后处理。"
+  },
+  "summary": {
+    "samples": 5,
+    "successes": 5,
+    "totalAudioSeconds": 138.67,
+    "averageAudioSeconds": 27.734,
+    "averageElapsedSeconds": 30.405
+  },
+  "results": [
+    {
+      "id": "Yc1v1a28106d20230811t1633191",
+      "fileName": "Yc1v1a28106d20230811t1633191.mp3",
+      "audio": "/audio_data/guizhou/playback/Yc1v1a28106d20230811t1633191.mp3",
+      "sourceAudio": "/audio_data/guizhou/Yc1v1a28106d20230811t1633191.mp3",
+      "audioSeconds": 18.49,
+      "sourceAudioFormat": "8kHz · 单声道 · PCM A-law（原始）",
+      "playbackFormat": "16kHz · 单声道 · MP3（播放副本）",
+      "hypothesis": "对不对？嗯，我也知道钱江唉老班长，我们刚才那个警我们出动是一车6人带队干部甄别为强组织那个骨伤医院那个电梯被困好嘞。",
+      "elapsedSeconds": 19.058,
+      "attempts": 1,
+      "status": "success"
+    },
+    {
+      "id": "Yc1v1a28106d20230811t1722098",
+      "fileName": "Yc1v1a28106d20230811t1722098.mp3",
+      "audio": "/audio_data/guizhou/playback/Yc1v1a28106d20230811t1722098.mp3",
+      "sourceAudio": "/audio_data/guizhou/Yc1v1a28106d20230811t1722098.mp3",
+      "audioSeconds": 13.65,
+      "sourceAudioFormat": "8kHz · 单声道 · PCM A-law（原始）",
+      "playbackFormat": "16kHz · 单声道 · MP3（播放副本）",
+      "hypothesis": "是的。唉，班长你好，我学院中路啊，就刚才我们火警处置完毕归队，然后现在是出动两车8人代表干部王局去处理跳塔吊进。嗯嗯好拜拜。",
+      "elapsedSeconds": 14.425,
+      "attempts": 1,
+      "status": "success"
+    },
+    {
+      "id": "Yc1v1a28106d20230811t1729292",
+      "fileName": "Yc1v1a28106d20230811t1729292.mp3",
+      "audio": "/audio_data/guizhou/playback/Yc1v1a28106d20230811t1729292.mp3",
+      "sourceAudio": "/audio_data/guizhou/Yc1v1a28106d20230811t1729292.mp3",
+      "audioSeconds": 50.37,
+      "sourceAudioFormat": "8kHz · 单声道 · PCM A-law（原始）",
+      "playbackFormat": "16kHz · 单声道 · MP3（播放副本）",
+      "hypothesis": "119指挥中心喂你好喂你好。啊，麻烦你快点救救命啊，都是我，我家里面个人不能用，我上次那有锅，然后现在有两岁多小朋友要我们部门是吧？啊对对对，我先给你解释清楚啊，我们只能用切割机把你门切开了啊，我们只能用切割机把你们切开啊，我们开不了锁哈。",
+      "elapsedSeconds": 56.209,
+      "attempts": 2,
+      "status": "success"
+    },
+    {
+      "id": "Yc1v1a28106d20230811t1735286",
+      "fileName": "Yc1v1a28106d20230811t1735286.mp3",
+      "audio": "/audio_data/guizhou/playback/Yc1v1a28106d20230811t1735286.mp3",
+      "sourceAudio": "/audio_data/guizhou/Yc1v1a28106d20230811t1735286.mp3",
+      "audioSeconds": 23.4,
+      "sourceAudioFormat": "8kHz · 单声道 · PCM A-law（原始）",
+      "playbackFormat": "16kHz · 单声道 · MP3（播放副本）",
+      "hypothesis": "他说现在已经是大人了，桂桂开，嗯，在街巷巷这边呢，有个460的460的，他们都近的很。是。还没反应吗？你知道吗？是瑜伽吗？啊，我们就是遇到的466特别近啊，嗯。",
+      "elapsedSeconds": 24.165,
+      "attempts": 1,
+      "status": "success"
+    },
+    {
+      "id": "Yc1v1a28106d20230811t1825135",
+      "fileName": "Yc1v1a28106d20230811t1825135.mp3",
+      "audio": "/audio_data/guizhou/playback/Yc1v1a28106d20230811t1825135.mp3",
+      "sourceAudio": "/audio_data/guizhou/Yc1v1a28106d20230811t1825135.mp3",
+      "audioSeconds": 32.76,
+      "sourceAudioFormat": "8kHz · 单声道 · PCM A-law（原始）",
+      "playbackFormat": "16kHz · 单声道 · MP3（播放副本）",
+      "hypothesis": "你好119指挥中心喂喂喂你好，车辆场这里起火了，快点白云区都拉岩是吧？啊车辆厂嗯我们消防已经接到了。帮我接到了是吧？唉，然后你现在在现场没得噢我去开嗯对啊，我加你个微信，你拍个视频给我方便吧，好好让你打的很呢，搞快点真的我们消防的已经在过来的路上了，我加你我已经加你微信了，麻烦你把那个现场视频发我一下哈。好好好唉，好好再见。",
+      "elapsedSeconds": 38.167,
+      "attempts": 3,
+      "status": "success"
+    }
+  ]
+}

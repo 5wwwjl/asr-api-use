@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light" />
+  <title>贵州口音 ASR 评测</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4f7f9;
+      --surface: #ffffff;
+      --surface-muted: #f8fafc;
+      --text: #15202b;
+      --text-muted: #5d6b78;
+      --border: #dbe3e8;
+      --accent: #087f8c;
+      --accent-dark: #076872;
+      --accent-soft: #e4f5f6;
+      --success: #237a57;
+      --success-soft: #e8f5ee;
+      --error: #b42318;
+      --error-soft: #fff0ee;
+      --warning: #945d00;
+      --warning-soft: #fff5dc;
+      --shadow: 0 1px 3px rgb(15 23 42 / 8%);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-width: 320px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, "PingFang SC", "Microsoft YaHei", system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+    }
+
+    button, audio { font: inherit; }
+
+    button:focus-visible,
+    audio:focus-visible {
+      outline: 3px solid rgb(8 127 140 / 28%);
+      outline-offset: 2px;
+    }
+
+    .page-shell {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 40px 0 64px;
+    }
+
+    .page-header {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .eyebrow {
+      margin: 0;
+      color: var(--accent-dark);
+      font-size: 0.875rem;
+      font-weight: 700;
+    }
+
+    h1 {
+      max-width: 760px;
+      margin: 0;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      line-height: 1.14;
+      text-wrap: balance;
+    }
+
+    .lede {
+      max-width: 850px;
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 1rem;
+      text-wrap: pretty;
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 12px;
+      margin: 0 0 24px;
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .metric dt {
+      margin-bottom: 6px;
+      color: var(--text-muted);
+      font-size: 0.8125rem;
+    }
+
+    .metric dd {
+      margin: 0;
+      font-size: clamp(1.35rem, 3vw, 1.875rem);
+      font-weight: 750;
+      line-height: 1.2;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: var(--surface);
+    }
+
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .filter-button {
+      min-height: 40px;
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface);
+      color: var(--text);
+      cursor: pointer;
+      font-weight: 650;
+    }
+
+    .filter-button:hover { border-color: var(--accent); }
+
+    .filter-button[aria-pressed="true"] {
+      border-color: var(--accent);
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .result-count {
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin: 0 0 20px;
+      color: var(--text-muted);
+      font-size: 0.8125rem;
+    }
+
+    .legend-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .legend-swatch {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+    }
+
+    .legend-swatch.replace { background: var(--warning-soft); border-color: #f1c56a; }
+    .legend-swatch.missing { background: var(--error-soft); border-color: #f0aaa3; }
+    .legend-swatch.extra { background: var(--accent-soft); border-color: #91d2d7; }
+
+    .results-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .result-card {
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+
+    .card-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface-muted);
+    }
+
+    .sample-title {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+      margin: 0;
+      font-size: 1rem;
+      text-wrap: balance;
+    }
+
+    .sample-number {
+      color: var(--text-muted);
+      font-size: 0.8125rem;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 26px;
+      padding: 2px 9px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .status-badge.exact { background: var(--success-soft); color: var(--success); }
+    .status-badge.error { background: var(--error-soft); color: var(--error); }
+
+    .mini-metrics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 16px;
+      margin: 0;
+      color: var(--text-muted);
+      font-size: 0.8125rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .mini-metrics span { white-space: nowrap; }
+
+    .card-body {
+      display: grid;
+      grid-template-columns: minmax(250px, 0.7fr) minmax(0, 2fr);
+      gap: 20px;
+      padding: 18px;
+    }
+
+    .audio-panel {
+      align-self: start;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface-muted);
+    }
+
+    .section-label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    audio {
+      display: block;
+      width: 100%;
+      min-height: 40px;
+    }
+
+    .audio-error {
+      margin: 8px 0 0;
+      color: var(--error);
+      font-size: 0.8125rem;
+    }
+
+    .transcripts {
+      display: grid;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .transcript-row {
+      display: grid;
+      grid-template-columns: 84px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+    }
+
+    .transcript-label {
+      padding-top: 3px;
+      color: var(--text-muted);
+      font-size: 0.8125rem;
+      font-weight: 700;
+    }
+
+    .transcript-text {
+      margin: 0;
+      overflow-wrap: anywhere;
+      font-size: 1rem;
+      line-height: 1.9;
+      text-wrap: pretty;
+    }
+
+    .diff-char {
+      padding: 1px 2px;
+      border-radius: 3px;
+    }
+
+    .diff-char.replace { background: var(--warning-soft); color: var(--warning); }
+    .diff-char.missing { background: var(--error-soft); color: var(--error); text-decoration: line-through; }
+    .diff-char.extra { background: var(--accent-soft); color: var(--accent-dark); text-decoration: underline; text-underline-offset: 3px; }
+
+    .page-note {
+      margin: 24px 0 0;
+      padding: 16px 18px;
+      border-left: 4px solid var(--accent);
+      background: var(--surface);
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      text-wrap: pretty;
+    }
+
+    .state-panel {
+      padding: 28px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .state-panel.error {
+      border-color: #f0aaa3;
+      background: var(--error-soft);
+      color: var(--error);
+    }
+
+    .loading-stack { display: grid; gap: 12px; }
+
+    .loading-block {
+      min-height: 120px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      background: var(--surface);
+    }
+
+    [hidden] { display: none !important; }
+
+    @media (max-width: 900px) {
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .metric:last-child { grid-column: 1 / -1; }
+      .card-body { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 560px) {
+      .page-shell { width: min(100% - 20px, 1180px); padding-top: 24px; }
+      .summary-grid { grid-template-columns: 1fr; }
+      .metric:last-child { grid-column: auto; }
+      .toolbar { align-items: stretch; }
+      .filters { display: grid; grid-template-columns: 1fr; width: 100%; }
+      .filter-button { width: 100%; }
+      .card-header, .card-body { padding: 14px; }
+      .transcript-row { grid-template-columns: 1fr; gap: 4px; }
+      .transcript-label { padding-top: 0; }
+    }
+  </style>
+</head>
+<body>
+  <main class="page-shell">
+    <header class="page-header">
+      <p class="eyebrow">科大讯飞方言识别大模型 · 实测结果</p>
+      <h1>贵州口音 ASR 评测</h1>
+      <p class="lede" id="dataset-description">正在加载评测数据……</p>
+    </header>
+
+    <dl class="summary-grid" id="summary" aria-label="评测汇总" hidden></dl>
+
+    <section class="toolbar" id="toolbar" aria-label="结果筛选" hidden>
+      <div class="filters" role="group" aria-label="按识别结果筛选">
+        <button class="filter-button" type="button" data-filter="all" aria-pressed="true">全部</button>
+        <button class="filter-button" type="button" data-filter="exact" aria-pressed="false">完全正确</button>
+        <button class="filter-button" type="button" data-filter="error" aria-pressed="false">存在错误</button>
+      </div>
+      <p class="result-count" id="result-count" aria-live="polite"></p>
+    </section>
+
+    <div class="legend" id="legend" aria-label="差异标记说明" hidden>
+      <span class="legend-item"><span class="legend-swatch replace" aria-hidden="true"></span>替换</span>
+      <span class="legend-item"><span class="legend-swatch missing" aria-hidden="true"></span>参考文本中缺失</span>
+      <span class="legend-item"><span class="legend-swatch extra" aria-hidden="true"></span>转写中新增</span>
+    </div>
+
+    <div class="loading-stack" id="loading" role="status" aria-label="正在加载评测结果">
+      <div class="loading-block"></div>
+      <div class="loading-block"></div>
+    </div>
+
+    <section class="results-list" id="results" aria-label="逐条评测结果"></section>
+    <div class="state-panel error" id="load-error" role="alert" hidden></div>
+    <div class="state-panel" id="empty-state" hidden>当前筛选条件下没有样本，请选择其他筛选条件。</div>
+
+    <aside class="page-note" id="metric-note" hidden></aside>
+  </main>
+
+  <script>
+    const DATA_URL = "guizhou_eval/results.json";
+    const METRIC_IGNORED = /[\p{P}\p{Z}]/u;
+    const state = { data: null, filter: "all" };
+
+    const summaryEl = document.getElementById("summary");
+    const toolbarEl = document.getElementById("toolbar");
+    const legendEl = document.getElementById("legend");
+    const resultsEl = document.getElementById("results");
+    const loadingEl = document.getElementById("loading");
+    const errorEl = document.getElementById("load-error");
+    const emptyEl = document.getElementById("empty-state");
+    const countEl = document.getElementById("result-count");
+    const descriptionEl = document.getElementById("dataset-description");
+    const noteEl = document.getElementById("metric-note");
+
+    function metricTokens(text) {
+      return Array.from(text).reduce((tokens, character, originalIndex) => {
+        if (!METRIC_IGNORED.test(character)) tokens.push({ character, originalIndex });
+        return tokens;
+      }, []);
+    }
+
+    function alignText(reference, hypothesis) {
+      const refTokens = metricTokens(reference);
+      const hypTokens = metricTokens(hypothesis);
+      const rows = refTokens.length + 1;
+      const columns = hypTokens.length + 1;
+      const dp = Array.from({ length: rows }, () => Array(columns).fill(0));
+
+      for (let row = 0; row < rows; row += 1) dp[row][0] = row;
+      for (let column = 0; column < columns; column += 1) dp[0][column] = column;
+
+      for (let row = 1; row < rows; row += 1) {
+        for (let column = 1; column < columns; column += 1) {
+          const substitutionCost = refTokens[row - 1].character === hypTokens[column - 1].character ? 0 : 1;
+          dp[row][column] = Math.min(
+            dp[row - 1][column] + 1,
+            dp[row][column - 1] + 1,
+            dp[row - 1][column - 1] + substitutionCost
+          );
+        }
+      }
+
+      const referenceStatus = new Map();
+      const hypothesisStatus = new Map();
+      let row = refTokens.length;
+      let column = hypTokens.length;
+
+      while (row > 0 || column > 0) {
+        if (row > 0 && column > 0) {
+          const matches = refTokens[row - 1].character === hypTokens[column - 1].character;
+          const cost = matches ? 0 : 1;
+          if (dp[row][column] === dp[row - 1][column - 1] + cost) {
+            if (!matches) {
+              referenceStatus.set(refTokens[row - 1].originalIndex, "replace");
+              hypothesisStatus.set(hypTokens[column - 1].originalIndex, "replace");
+            }
+            row -= 1;
+            column -= 1;
+            continue;
+          }
+        }
+
+        if (row > 0 && dp[row][column] === dp[row - 1][column] + 1) {
+          referenceStatus.set(refTokens[row - 1].originalIndex, "missing");
+          row -= 1;
+        } else {
+          hypothesisStatus.set(hypTokens[column - 1].originalIndex, "extra");
+          column -= 1;
+        }
+      }
+
+      return { referenceStatus, hypothesisStatus };
+    }
+
+    function appendHighlightedText(container, text, statusByIndex) {
+      Array.from(text).forEach((character, index) => {
+        const status = statusByIndex.get(index);
+        if (!status) {
+          container.append(document.createTextNode(character));
+          return;
+        }
+        const span = document.createElement("span");
+        span.className = `diff-char ${status}`;
+        span.textContent = character;
+        container.append(span);
+      });
+    }
+
+    function formatPercent(value, digits = 2) {
+      return `${(Number(value) * 100).toFixed(digits)}%`;
+    }
+
+    function formatSeconds(value) {
+      return `${Number(value).toFixed(2)} 秒`;
+    }
+
+    function buildSummary(summary) {
+      const metrics = [
+        ["测试音频", `${summary.samples} 条`],
+        ["严格 CER", formatPercent(summary.cer)],
+        ["完全匹配率", formatPercent(summary.exactMatchRate)],
+        ["平均音频时长", formatSeconds(summary.averageAudioSeconds)],
+        ["平均识别耗时", formatSeconds(summary.averageElapsedSeconds)]
+      ];
+      summaryEl.replaceChildren(...metrics.map(([label, value]) => {
+        const metric = document.createElement("div");
+        metric.className = "metric";
+        const term = document.createElement("dt");
+        term.textContent = label;
+        const description = document.createElement("dd");
+        description.textContent = value;
+        metric.append(term, description);
+        return metric;
+      }));
+    }
+
+    function buildTranscriptRow(label, text, statusByIndex) {
+      const row = document.createElement("div");
+      row.className = "transcript-row";
+      const rowLabel = document.createElement("div");
+      rowLabel.className = "transcript-label";
+      rowLabel.textContent = label;
+      const paragraph = document.createElement("p");
+      paragraph.className = "transcript-text";
+      appendHighlightedText(paragraph, text, statusByIndex);
+      row.append(rowLabel, paragraph);
+      return row;
+    }
+
+    function buildResultCard(result, listIndex) {
+      const card = document.createElement("article");
+      card.className = "result-card";
+      card.dataset.result = result.edits === 0 ? "exact" : "error";
+
+      const header = document.createElement("header");
+      header.className = "card-header";
+      const title = document.createElement("h2");
+      title.className = "sample-title";
+      title.textContent = `样本 ${result.id}`;
+      const sampleNumber = document.createElement("span");
+      sampleNumber.className = "sample-number";
+      sampleNumber.textContent = `第 ${listIndex + 1} / ${state.data.results.length} 条`;
+      title.append(sampleNumber);
+
+      const badge = document.createElement("span");
+      badge.className = `status-badge ${result.edits === 0 ? "exact" : "error"}`;
+      badge.textContent = result.edits === 0 ? "完全正确" : `${result.edits} 个字符错误`;
+      title.append(badge);
+
+      const metrics = document.createElement("p");
+      metrics.className = "mini-metrics";
+      const metricValues = [
+        `CER ${formatPercent(result.cer)}`,
+        `音频 ${formatSeconds(result.audioSeconds)}`,
+        `识别 ${formatSeconds(result.elapsedSeconds)}`,
+        `请求 ${result.attempts} 次`
+      ];
+      metricValues.forEach((value) => {
+        const span = document.createElement("span");
+        span.textContent = value;
+        metrics.append(span);
+      });
+      header.append(title, metrics);
+
+      const body = document.createElement("div");
+      body.className = "card-body";
+      const audioPanel = document.createElement("div");
+      audioPanel.className = "audio-panel";
+      const audioLabel = document.createElement("span");
+      audioLabel.className = "section-label";
+      audioLabel.textContent = "测试音频";
+      const audio = document.createElement("audio");
+      audio.controls = true;
+      audio.preload = "none";
+      audio.src = result.audio;
+      audio.setAttribute("aria-label", `播放样本 ${result.id} 的测试音频`);
+      const audioError = document.createElement("p");
+      audioError.className = "audio-error";
+      audioError.hidden = true;
+      audioError.textContent = "音频加载失败，请刷新页面后重试。";
+      audio.addEventListener("error", () => { audioError.hidden = false; }, { once: true });
+      audioPanel.append(audioLabel, audio, audioError);
+
+      const alignment = alignText(result.reference, result.hypothesis);
+      const transcripts = document.createElement("div");
+      transcripts.className = "transcripts";
+      transcripts.append(
+        buildTranscriptRow("参考文本", result.reference, alignment.referenceStatus),
+        buildTranscriptRow("讯飞转写", result.hypothesis, alignment.hypothesisStatus)
+      );
+
+      body.append(audioPanel, transcripts);
+      card.append(header, body);
+      return card;
+    }
+
+    function renderResults() {
+      const allResults = state.data.results;
+      const visibleResults = allResults.filter((result) => {
+        if (state.filter === "exact") return result.edits === 0;
+        if (state.filter === "error") return result.edits > 0;
+        return true;
+      });
+      const originalIndex = new Map(allResults.map((result, index) => [result.id, index]));
+      resultsEl.replaceChildren(...visibleResults.map((result) => buildResultCard(result, originalIndex.get(result.id))));
+      countEl.textContent = `显示 ${visibleResults.length} / ${allResults.length} 条`;
+      emptyEl.hidden = visibleResults.length !== 0;
+    }
+
+    function validateData(data) {
+      if (!data || !data.metadata || !data.summary || !Array.isArray(data.results)) {
+        throw new Error("评测数据结构不完整");
+      }
+      if (data.results.length !== data.summary.samples) {
+        throw new Error("评测汇总与明细数量不一致");
+      }
+      const ids = new Set(data.results.map((result) => result.id));
+      if (ids.size !== data.results.length) throw new Error("评测数据包含重复样本");
+    }
+
+    document.querySelectorAll("[data-filter]").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.filter = button.dataset.filter;
+        document.querySelectorAll("[data-filter]").forEach((candidate) => {
+          candidate.setAttribute("aria-pressed", String(candidate === button));
+        });
+        renderResults();
+      });
+    });
+
+    fetch(DATA_URL, { cache: "no-store" })
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+      })
+      .then((data) => {
+        validateData(data);
+        state.data = data;
+        buildSummary(data.summary);
+        descriptionEl.textContent = `${data.metadata.dataset}，共 ${data.summary.samples} 条。识别模型：${data.metadata.provider}。`;
+        noteEl.textContent = `${data.metadata.metricNote} 本页面评估的是贵州籍说话人朗读普通话，不代表自然贵州方言转标准普通话的准确率。`;
+        loadingEl.hidden = true;
+        summaryEl.hidden = false;
+        toolbarEl.hidden = false;
+        legendEl.hidden = false;
+        noteEl.hidden = false;
+        renderResults();
+      })
+      .catch((error) => {
+        loadingEl.hidden = true;
+        errorEl.hidden = false;
+        errorEl.textContent = `评测结果加载失败：${error.message}。请刷新页面重试。`;
+        descriptionEl.textContent = "评测数据暂时无法加载。";
+      });
+  </script>
+</body>
+</html>

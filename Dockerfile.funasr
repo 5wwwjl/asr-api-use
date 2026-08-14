@@ -1,0 +1,30 @@
+FROM registry.cn-hangzhou.aliyuncs.com/funasr_repo/funasr:funasr-runtime-sdk-online-cpu-0.1.13
+
+LABEL org.opencontainers.image.title="full-question FunASR CPU runtime" \
+      org.opencontainers.image.description="Reproducible Paraformer runtime used by the ASR gateway"
+
+WORKDIR /workspace
+
+# Cache the small VAD model during the build so production startup is offline.
+RUN python -c "from modelscope.hub.snapshot_download import snapshot_download; snapshot_download('iic/speech_fsmn_vad_zh-cn-16k-common-pytorch', revision='v2.0.4')" \
+    && sed -i "s/if len(cache) == 0:/if 'prev_samples' not in cache:/" \
+       /workspace/FunASR/funasr/models/fsmn_vad_streaming/model.py
+
+COPY funasr_server_xhw.py /workspace/funasr_server_xhw.py
+COPY docker/funasr-entrypoint.sh /usr/local/bin/funasr-entrypoint
+RUN chmod +x /usr/local/bin/funasr-entrypoint
+
+ENV FUNASR_HOST=0.0.0.0 \
+    FUNASR_PORT=10095 \
+    FUNASR_MODEL_DIR=/models/paraformer \
+    FUNASR_VAD_MODEL=/root/.cache/modelscope/hub/iic/speech_fsmn_vad_zh-cn-16k-common-pytorch \
+    FUNASR_VAD_KWARGS='{"max_single_segment_time": 30000}' \
+    FUNASR_NGPU=0 \
+    FUNASR_NCPU=4
+
+EXPOSE 10095
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=180s --retries=5 \
+  CMD python -c "import socket; s=socket.create_connection(('127.0.0.1', 10095), 3); s.close()" || exit 1
+
+ENTRYPOINT ["/usr/local/bin/funasr-entrypoint"]

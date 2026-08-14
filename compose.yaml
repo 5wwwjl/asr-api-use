@@ -1,0 +1,61 @@
+name: full-question-asr
+
+services:
+  funasr:
+    image: full-question-funasr:cpu
+    build:
+      context: .
+      dockerfile: Dockerfile.funasr
+    restart: unless-stopped
+    init: true
+    environment:
+      FUNASR_NCPU: "${FUNASR_NCPU:-4}"
+    volumes:
+      - type: bind
+        source: ${FUNASR_MODEL_DIR:-/home/twai/xhw/FunASR/server/funasr-runtime-resources/models/iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch}
+        target: /models/paraformer
+        read_only: true
+    ports:
+      - "${FUNASR_PUBLISHED_PORT:-10097}:10095"
+    networks:
+      - asr
+
+  gateway:
+    image: full-question-asr-gateway:latest
+    build:
+      context: .
+      dockerfile: Dockerfile.gateway
+    restart: unless-stopped
+    init: true
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      GATEWAY_HOST: 0.0.0.0
+      GATEWAY_PORT: "8443"
+      GATEWAY_WEB_DIR: /app/web
+      TLS_CERT_FILE: /data/certs/cert.pem
+      TLS_KEY_FILE: /data/certs/key.pem
+      ASR_UPSTREAM_WS: ws://funasr:10095
+      ASR_CPU_TEST_UPSTREAM_WS: ws://funasr:10095
+      ASR_FULL_HOTWORD_FILE: /app/hotwords_taxonomy_12x72/full.txt
+      ASR_RECORDINGS_DIR: /data/recordings
+      ASR_BUSINESS_LOG_DIR: /data/logs
+    depends_on:
+      funasr:
+        condition: service_healthy
+    volumes:
+      - ./certs:/data/certs
+      - ./logs:/data/logs
+      - ./recordings:/data/recordings
+      - ./hotwords:/app/hotwords
+      - ./hotwords_full:/app/hotwords_full:ro
+      - ./hotwords_taxonomy_12x72:/app/hotwords_taxonomy_12x72:ro
+    ports:
+      - "${ASR_GATEWAY_PUBLISHED_PORT:-8443}:8443"
+    networks:
+      - asr
+
+networks:
+  asr:
+    driver: bridge

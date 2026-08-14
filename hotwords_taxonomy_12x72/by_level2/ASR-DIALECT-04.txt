@@ -1,0 +1,6 @@
+# ASR-DIALECT-04 吞字、重复、口吃与非规范口语候选
+# 一级分类: ASR-DIALECT 方言、口音与口语
+# 适用: no
+# 热词数: 0
+# 由 generate_taxonomy_hotwords.py 生成，请勿手工编辑。
+

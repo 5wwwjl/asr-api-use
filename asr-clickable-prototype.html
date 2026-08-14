@@ -1,0 +1,1013 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ASR语音识别组件</title>
+  <style>
+    :root {
+      --bg: #071422;
+      --top: #09152a;
+      --panel: rgba(14, 28, 55, .96);
+      --panel2: rgba(9, 35, 64, .92);
+      --line: rgba(78, 126, 177, .42);
+      --line2: rgba(21, 223, 255, .32);
+      --text: #eaf6ff;
+      --muted: #7d98b3;
+      --cyan: #19dcff;
+      --green: #21e39b;
+      --amber: #ffc247;
+      --red: #ff4f73;
+      --orange: #ff8d3a;
+      --purple: #a488ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow: hidden;
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+      background:
+        radial-gradient(circle at 18% 8%, rgba(25, 220, 255, .14), transparent 28%),
+        linear-gradient(135deg, #07152b 0%, #06101f 58%, #09232e 100%);
+    }
+
+    .app {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: 76px 42px 1fr;
+      background-image:
+        linear-gradient(rgba(75, 126, 177, .07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(75, 126, 177, .07) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    .topbar {
+      display: grid;
+      grid-template-columns: 360px 1fr 360px;
+      align-items: center;
+      background: rgba(7, 16, 34, .96);
+      border-bottom: 1px solid rgba(69, 125, 183, .38);
+    }
+
+    .module-tabs {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding-left: 22px;
+    }
+
+    .module {
+      width: 58px;
+      height: 56px;
+      border: 1px solid transparent;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      gap: 3px;
+      color: #839bb5;
+      font-size: 12px;
+      position: relative;
+    }
+
+    .module.active {
+      color: var(--cyan);
+      background: rgba(25, 220, 255, .1);
+      border-color: rgba(25, 220, 255, .44);
+    }
+
+    .module b {
+      font-size: 18px;
+      line-height: 18px;
+    }
+
+    .badge {
+      position: absolute;
+      right: 5px;
+      top: -6px;
+      min-width: 20px;
+      height: 20px;
+      border-radius: 10px;
+      display: grid;
+      place-items: center;
+      background: #ff315d;
+      color: white;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .title {
+      text-align: center;
+      min-width: 0;
+    }
+
+    .title h1 {
+      margin: 0;
+      color: #45e8ff;
+      text-shadow: 0 0 18px rgba(25, 220, 255, .45);
+      font-size: 29px;
+      line-height: 34px;
+      letter-spacing: 8px;
+      font-weight: 900;
+    }
+
+    .title p {
+      margin: 3px 0 0;
+      color: rgba(96, 192, 236, .48);
+      font-size: 11px;
+      letter-spacing: 6px;
+    }
+
+    .status {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 18px;
+      padding-right: 22px;
+    }
+
+    .time {
+      color: var(--cyan);
+      font-size: 18px;
+      font-weight: 900;
+      letter-spacing: 3px;
+    }
+
+    .user {
+      min-width: 132px;
+      height: 54px;
+      border: 1px solid rgba(99, 132, 180, .42);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 14px;
+      background: rgba(255, 255, 255, .04);
+    }
+
+    .avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: #139bea;
+      color: white;
+      font-weight: 900;
+    }
+
+    .small { color: var(--muted); font-size: 12px; }
+
+    .ticker {
+      display: grid;
+      grid-template-columns: 112px 1fr;
+      align-items: center;
+      background: rgba(8, 26, 50, .96);
+      border-bottom: 1px solid rgba(55, 105, 159, .38);
+    }
+
+    .ticker-label {
+      height: 28px;
+      margin-left: 22px;
+      border: 1px solid rgba(25, 220, 255, .35);
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      color: var(--cyan);
+      background: rgba(25, 220, 255, .08);
+      font-size: 12px;
+    }
+
+    .ticker-text {
+      display: flex;
+      gap: 46px;
+      color: #9eb2c8;
+      white-space: nowrap;
+      overflow: hidden;
+      font-size: 13px;
+    }
+
+    .workspace {
+      min-height: 0;
+      padding: 18px 20px 20px;
+      display: grid;
+      grid-template-columns: 248px minmax(0, 1fr);
+      gap: 18px;
+    }
+
+    .nav {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: linear-gradient(180deg, rgba(14, 28, 55, .96), rgba(8, 20, 40, .96));
+      overflow: hidden;
+      box-shadow: 0 18px 46px rgba(0, 0, 0, .28);
+    }
+
+    .nav-head {
+      height: 58px;
+      display: flex;
+      align-items: center;
+      padding: 0 18px;
+      border-bottom: 1px solid var(--line);
+      color: var(--cyan);
+      font-weight: 900;
+    }
+
+    .nav button {
+      width: 100%;
+      height: 64px;
+      border: 0;
+      border-bottom: 1px solid rgba(72, 120, 174, .26);
+      background: transparent;
+      color: #b9cce0;
+      display: grid;
+      grid-template-columns: 34px 1fr;
+      align-items: center;
+      gap: 10px;
+      padding: 0 16px;
+      text-align: left;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .nav button:hover,
+    .nav button.active {
+      color: var(--cyan);
+      background: rgba(25, 220, 255, .09);
+    }
+
+    .nav button span:first-child {
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(25, 220, 255, .28);
+      color: var(--cyan);
+      font-weight: 900;
+    }
+
+    .content {
+      min-height: 0;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      overflow: hidden;
+      background: linear-gradient(180deg, rgba(14, 28, 55, .96), rgba(7, 18, 36, .96));
+      box-shadow: 0 18px 46px rgba(0, 0, 0, .28);
+      display: grid;
+      grid-template-rows: 58px 1fr;
+    }
+
+    .content-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--line);
+      background: linear-gradient(90deg, rgba(16, 72, 123, .56), rgba(13, 28, 55, .28));
+    }
+
+    .content-title {
+      font-size: 17px;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .content-title::before {
+      content: "";
+      width: 4px;
+      height: 18px;
+      border-radius: 3px;
+      background: var(--cyan);
+      box-shadow: 0 0 14px var(--cyan);
+    }
+
+    .screen {
+      display: none;
+      min-height: 0;
+      overflow: auto;
+      padding: 18px;
+    }
+
+    .screen.active { display: block; }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr 1fr;
+      gap: 16px;
+      min-height: 100%;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .card {
+      border: 1px solid rgba(69, 118, 170, .42);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, .04);
+      padding: 16px;
+      min-width: 0;
+    }
+
+    .card h3 {
+      margin: 0 0 12px;
+      color: #f0f8ff;
+      font-size: 16px;
+    }
+
+    .tag {
+      min-height: 25px;
+      border-radius: 5px;
+      padding: 3px 9px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 900;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+
+    .tag.cyan { color: var(--cyan); background: rgba(25, 220, 255, .1); border-color: rgba(25, 220, 255, .38); }
+    .tag.green { color: var(--green); background: rgba(33, 227, 155, .1); border-color: rgba(33, 227, 155, .36); }
+    .tag.amber { color: var(--amber); background: rgba(255, 194, 71, .1); border-color: rgba(255, 194, 71, .38); }
+    .tag.red { color: var(--red); background: rgba(255, 79, 115, .12); border-color: rgba(255, 79, 115, .42); }
+    .tag.purple { color: #c7b8ff; background: rgba(164, 136, 255, .12); border-color: rgba(164, 136, 255, .42); }
+
+    .asr-demo {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 14px;
+      min-height: 550px;
+    }
+
+    .transcript {
+      display: grid;
+      align-content: start;
+      gap: 14px;
+    }
+
+    .utter {
+      display: grid;
+      grid-template-columns: 78px minmax(0, 1fr);
+      gap: 12px;
+    }
+
+    .speaker {
+      text-align: right;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 20px;
+      padding-top: 10px;
+    }
+
+    .bubble {
+      border: 1px solid rgba(69, 118, 170, .45);
+      border-radius: 10px;
+      padding: 12px 14px;
+      line-height: 1.72;
+      background: rgba(255, 255, 255, .045);
+      font-size: 15px;
+    }
+
+    .caller .bubble { border-color: rgba(25, 220, 255, .38); background: rgba(25, 220, 255, .06); }
+    .operator .bubble { border-color: rgba(164, 136, 255, .38); background: rgba(164, 136, 255, .06); }
+
+    mark {
+      color: #061421;
+      background: #45e8ff;
+      border-radius: 4px;
+      padding: 1px 4px;
+      font-weight: 900;
+    }
+
+    mark.warn { background: var(--amber); }
+    mark.danger { background: var(--red); color: white; }
+    mark.ok { background: var(--green); }
+
+    mark.loc,
+    mark.disaster,
+    mark.person,
+    mark.risk,
+    mark.access,
+    mark.resource {
+      background: #45e8ff;
+      color: #061421;
+    }
+
+    .mini-action {
+      border: 1px solid rgba(25, 220, 255, .34);
+      border-radius: 5px;
+      background: rgba(25, 220, 255, .08);
+      color: var(--cyan);
+      height: 24px;
+      padding: 0 7px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .ask-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .ask-item {
+      border: 1px solid rgba(255, 194, 71, .28);
+      border-radius: 8px;
+      padding: 9px 10px;
+      background: rgba(255, 194, 71, .055);
+      display: grid;
+      gap: 5px;
+      line-height: 18px;
+    }
+
+    .ask-item strong {
+      color: var(--amber);
+      font-size: 13px;
+    }
+
+    .ask-item span {
+      color: #d9e7f4;
+      font-size: 13px;
+    }
+
+    .qa {
+      display: inline-grid;
+      place-items: center;
+      min-width: 36px;
+      height: 24px;
+      border-radius: 6px;
+      color: #071421;
+      font-weight: 900;
+      font-size: 12px;
+      margin-bottom: 4px;
+    }
+
+    .qa.q { background: var(--purple); color: white; }
+    .qa.a { background: var(--cyan); }
+
+    .utter-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+
+    .category {
+      display: inline-flex;
+      min-height: 23px;
+      align-items: center;
+      border: 1px solid rgba(25, 220, 255, .34);
+      border-radius: 5px;
+      padding: 2px 8px;
+      color: #bfefff;
+      background: rgba(25, 220, 255, .08);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .audio-strip {
+      margin-top: 10px;
+      min-height: 34px;
+      border: 1px solid rgba(69, 118, 170, .32);
+      border-radius: 8px;
+      display: grid;
+      grid-template-columns: 34px 1fr 58px;
+      gap: 10px;
+      align-items: center;
+      padding: 6px 9px;
+      background: rgba(4, 17, 34, .45);
+    }
+
+    .play {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #061421;
+      background: var(--cyan);
+      font-size: 11px;
+      font-weight: 900;
+    }
+
+    .audio-bars {
+      height: 20px;
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      overflow: hidden;
+    }
+
+    .audio-bars i {
+      width: 4px;
+      border-radius: 3px;
+      background: linear-gradient(180deg, var(--cyan), #1c6fff);
+      opacity: .9;
+      flex: 0 0 auto;
+    }
+
+    .duration {
+      color: var(--muted);
+      font-size: 12px;
+      text-align: right;
+    }
+
+    .answer-score {
+      margin-top: 10px;
+      border: 1px solid rgba(33, 227, 155, .28);
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: rgba(33, 227, 155, .06);
+      display: grid;
+      gap: 7px;
+    }
+
+    .score-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      color: #cdefff;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .score-bar {
+      height: 7px;
+      border-radius: 99px;
+      background: rgba(126, 154, 181, .24);
+      overflow: hidden;
+    }
+
+    .score-bar span {
+      display: block;
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, var(--green), var(--cyan));
+    }
+
+    .io-map {
+      display: grid;
+      grid-template-columns: 1fr 110px 1fr;
+      gap: 16px;
+      align-items: start;
+    }
+
+    .arrow {
+      height: 280px;
+      display: grid;
+      place-items: center;
+      color: var(--cyan);
+      font-size: 42px;
+      text-shadow: 0 0 18px rgba(25, 220, 255, .46);
+    }
+
+    .list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .row {
+      min-height: 44px;
+      border: 1px solid rgba(69, 118, 170, .34);
+      border-radius: 8px;
+      padding: 9px 11px;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      background: rgba(255, 255, 255, .035);
+    }
+
+    .row strong { color: #eef9ff; }
+    .row span:last-child { color: var(--muted); font-size: 12px; text-align: right; }
+
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(130px, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .node {
+      min-height: 94px;
+      border: 1px solid rgba(25, 220, 255, .28);
+      border-radius: 12px;
+      padding: 13px;
+      background: rgba(5, 31, 58, .72);
+      cursor: pointer;
+    }
+
+    .node:hover {
+      border-color: rgba(25, 220, 255, .72);
+      box-shadow: 0 0 20px rgba(25, 220, 255, .13);
+    }
+
+    .node h4 {
+      margin: 0 0 9px;
+      color: var(--cyan);
+      font-size: 15px;
+    }
+
+    .node p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 18px;
+    }
+
+    .api-box pre {
+      margin: 0;
+      white-space: pre-wrap;
+      color: #d8efff;
+      line-height: 1.6;
+      font-size: 13px;
+    }
+
+    .case-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+    }
+
+    .case {
+      min-height: 138px;
+      border: 1px solid rgba(69, 118, 170, .42);
+      border-radius: 12px;
+      padding: 14px;
+      background: rgba(255, 255, 255, .04);
+      cursor: pointer;
+    }
+
+    .case:hover { border-color: rgba(25, 220, 255, .7); }
+
+    .case h3 { margin-bottom: 8px; }
+    .case p { margin: 0; color: var(--muted); line-height: 20px; font-size: 13px; }
+
+    .toast {
+      position: fixed;
+      right: 26px;
+      bottom: 24px;
+      min-width: 280px;
+      border: 1px solid rgba(25, 220, 255, .5);
+      border-radius: 10px;
+      background: rgba(7, 23, 45, .96);
+      color: var(--text);
+      padding: 14px 16px;
+      box-shadow: 0 18px 46px rgba(0, 0, 0, .34);
+      transform: translateY(90px);
+      opacity: 0;
+      transition: .22s ease;
+      pointer-events: none;
+    }
+
+    .toast.show {
+      transform: translateY(0);
+      opacity: 1;
+    }
+
+    button.action {
+      border: 1px solid rgba(25, 220, 255, .42);
+      background: rgba(25, 220, 255, .09);
+      color: var(--cyan);
+      border-radius: 7px;
+      height: 34px;
+      padding: 0 12px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    @media (max-width: 1200px) {
+      body { overflow: auto; }
+      .app { height: auto; min-height: 100vh; }
+      .topbar, .workspace, .grid-3, .grid-2, .io-map, .asr-demo, .flow, .case-grid {
+        grid-template-columns: 1fr;
+      }
+      .arrow { height: 40px; transform: rotate(90deg); }
+      .status, .module-tabs { justify-content: center; padding: 8px; flex-wrap: wrap; }
+      .title h1 { font-size: 22px; letter-spacing: 3px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="module-tabs">
+        <div class="module"><b>□</b><span>短信</span></div>
+        <div class="module active"><span class="badge">3</span><b>▣</b><span>小程序</span></div>
+        <div class="module"><b>▦</b><span>APP</span></div>
+        <div class="module"><b>▰</b><span>城市监控</span></div>
+      </div>
+      <div class="title">
+        <h1>天维尔消防智能接处警系统</h1>
+        <p>SHENZHEN FIRE COMMAND & DISPATCH SYSTEM</p>
+      </div>
+      <div class="status">
+        <div>
+          <div class="time">15:36:55</div>
+          <div class="small">2026年06月04日 星期四</div>
+        </div>
+        <div class="user"><div class="avatar">张</div><div><strong>张明</strong><div class="small">席位 A03</div></div></div>
+      </div>
+    </header>
+
+    <div class="ticker">
+      <div class="ticker-label">实时消息</div>
+      <div class="ticker-text">
+        <span>ASR 当前通话识别中</span>
+        <span>问询模块等待楼栋、楼层、受困人员确认</span>
+        <span>建筑画像模块待接收 1 号楼与 18 层线索</span>
+      </div>
+    </div>
+
+    <main class="workspace">
+      <aside class="nav">
+        <div class="nav-head">ASR 组件原型</div>
+        <button class="active" data-screen="screen-ui"><span>01</span><div><strong>前端页面</strong><div class="small">展示效果</div></div></button>
+        <button data-screen="screen-io"><span>02</span><div><strong>输入输出</strong><div class="small">进什么出什么</div></div></button>
+        <button data-screen="screen-link"><span>03</span><div><strong>模块联动</strong><div class="small">和谁对接</div></div></button>
+        <button data-screen="screen-api"><span>04</span><div><strong>后端契约</strong><div class="small">接口/字段</div></div></button>
+      </aside>
+
+      <section class="content">
+        <div class="content-head">
+          <div class="content-title" id="pageTitle">前端页面</div>
+          <div></div>
+        </div>
+
+        <section class="screen active" id="screen-ui">
+          <div class="asr-demo">
+            <div class="card">
+              <h3>通话实时转写</h3>
+              <div class="transcript">
+                <div class="utter caller" data-toast="A0：报警人主动描述初始灾情，不挂接具体问题。">
+                  <div class="speaker"><span class="qa a">A0</span><br>报警人<br>15:36:12</div>
+                  <div class="bubble">
+                    <div class="utter-meta"><span class="category">主动描述 / 初始灾情</span><span class="small">statement</span></div>
+                    <div><mark class="loc">福田</mark>这边有个<mark class="disaster">高层住宅</mark>着火了，<mark class="loc">18 层</mark>窗户往外冒烟。</div>
+                    <div class="audio-strip" data-toast="播放 A0 原始语音片段：00:06">
+                      <div class="play">▶</div>
+                      <div class="audio-bars">
+                        <i style="height:8px"></i><i style="height:14px"></i><i style="height:18px"></i><i style="height:11px"></i><i style="height:16px"></i><i style="height:9px"></i><i style="height:20px"></i><i style="height:13px"></i><i style="height:17px"></i><i style="height:7px"></i><i style="height:15px"></i><i style="height:10px"></i><i style="height:18px"></i><i style="height:12px"></i><i style="height:16px"></i>
+                      </div>
+                      <div class="duration">00:06</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="utter operator" data-toast="Q1：接警员追问楼栋和被困人员，属于定位核实和人员核实问题。">
+                  <div class="speaker"><span class="qa q">Q1</span><br>接警员<br>15:36:18</div>
+                  <div class="bubble">
+                    <div class="utter-meta"><span class="category">问题类别：楼栋定位 + 人员受困</span><span class="small">question</span></div>
+                    <div>具体是哪一栋楼？有没有人员被困？</div>
+                    <div class="audio-strip" data-toast="播放 Q1 原始语音片段：00:04">
+                      <div class="play">▶</div>
+                      <div class="audio-bars">
+                        <i style="height:10px"></i><i style="height:12px"></i><i style="height:7px"></i><i style="height:14px"></i><i style="height:18px"></i><i style="height:9px"></i><i style="height:13px"></i><i style="height:11px"></i><i style="height:16px"></i><i style="height:8px"></i><i style="height:12px"></i>
+                      </div>
+                      <div class="duration">00:04</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="utter caller" data-toast="A1：报警人回答 Q1，命中楼栋、人数、楼层等重点词。">
+                  <div class="speaker"><span class="qa a">A1</span><br>报警人<br>15:36:25</div>
+                  <div class="bubble">
+                    <div class="utter-meta"><span class="category">回答 Q1 / 楼栋与人员位置</span><span class="small">answer</span></div>
+                    <div>是<mark class="loc">1 号楼</mark>，好像有<mark class="person">3 个人</mark>在<mark class="person">22 层</mark>。</div>
+                    <div class="audio-strip" data-toast="播放 A1 原始语音片段：00:06">
+                      <div class="play">▶</div>
+                      <div class="audio-bars">
+                        <i style="height:7px"></i><i style="height:16px"></i><i style="height:19px"></i><i style="height:13px"></i><i style="height:9px"></i><i style="height:18px"></i><i style="height:11px"></i><i style="height:15px"></i><i style="height:20px"></i><i style="height:8px"></i><i style="height:14px"></i><i style="height:12px"></i>
+                      </div>
+                      <div class="duration">00:06</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="utter operator" data-toast="Q2：接警员追问消防通道，属于通行条件问题。">
+                  <div class="speaker"><span class="qa q">Q2</span><br>接警员<br>15:36:35</div>
+                  <div class="bubble">
+                    <div class="utter-meta"><span class="category">问题类别：消防通道核实</span><span class="small">question</span></div>
+                    <div>消防通道能不能进？</div>
+                    <div class="audio-strip" data-toast="播放 Q2 原始语音片段：00:03">
+                      <div class="play">▶</div>
+                      <div class="audio-bars">
+                        <i style="height:9px"></i><i style="height:15px"></i><i style="height:11px"></i><i style="height:17px"></i><i style="height:8px"></i><i style="height:13px"></i><i style="height:19px"></i><i style="height:10px"></i><i style="height:14px"></i><i style="height:12px"></i>
+                      </div>
+                      <div class="duration">00:05</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="utter caller" data-toast="A2：报警人回答 Q2，并补充“烟越来越大”的风险变化。">
+                  <div class="speaker"><span class="qa a">A2</span><br>报警人<br>15:36:41</div>
+                  <div class="bubble">
+                    <div class="utter-meta"><span class="category">回答 Q2 / 通道条件 + 风险补充</span><span class="small">answer</span></div>
+                    <div><mark class="access">消防通道还空着</mark>，<mark class="risk">烟越来越大</mark>。</div>
+                    <div class="audio-strip" data-toast="播放 A2 原始语音片段：00:05">
+                      <div class="play">▶</div>
+                      <div class="audio-bars">
+                        <i style="height:6px"></i><i style="height:10px"></i><i style="height:18px"></i><i style="height:11px"></i><i style="height:15px"></i><i style="height:20px"></i><i style="height:12px"></i><i style="height:8px"></i><i style="height:17px"></i><i style="height:14px"></i><i style="height:19px"></i><i style="height:10px"></i><i style="height:16px"></i>
+                      </div>
+                      <div class="duration">00:07</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="utter operator" data-toast="Q3：接警员追问受困人员状态，属于救援条件核实。">
+                  <div class="speaker"><span class="qa q">Q3</span><br>接警员<br>15:36:49</div>
+                  <div class="bubble">
+                    <div class="utter-meta"><span class="category">问题类别：救援条件核实</span><span class="small">question</span></div>
+                    <div>被困人员是在窗边还是屋里？能不能自己下楼？</div>
+                    <div class="audio-strip" data-toast="播放 Q3 原始语音片段：00:04">
+                      <div class="play">▶</div>
+                      <div class="audio-bars">
+                        <i style="height:8px"></i><i style="height:13px"></i><i style="height:17px"></i><i style="height:9px"></i><i style="height:15px"></i><i style="height:11px"></i><i style="height:18px"></i><i style="height:10px"></i><i style="height:14px"></i>
+                      </div>
+                      <div class="duration">00:04</div>
+                    </div>
+                  </div>
+                </div>
+                <div class="utter caller" data-toast="A3：针对 Q3 的回答，命中资源线索：需要云梯救援。">
+                  <div class="speaker"><span class="qa a">A3</span><br>报警人<br>15:36:56</div>
+                  <div class="bubble">
+                    <div class="utter-meta"><span class="category">回答 Q3 / 救援资源线索</span><span class="small">answer</span></div>
+                    <div>人在窗边喊救命，下不来，可能<mark class="resource">需要云梯救援</mark>。</div>
+                    <div class="audio-strip" data-toast="播放 A3 原始语音片段：00:05">
+                      <div class="play">▶</div>
+                      <div class="audio-bars">
+                        <i style="height:9px"></i><i style="height:18px"></i><i style="height:12px"></i><i style="height:15px"></i><i style="height:7px"></i><i style="height:19px"></i><i style="height:14px"></i><i style="height:10px"></i><i style="height:16px"></i><i style="height:12px"></i>
+                      </div>
+                      <div class="duration">00:05</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-io">
+          <div class="io-map">
+            <div class="card">
+              <h3>输入：这个组件从哪里拿数据</h3>
+              <div class="list">
+                <div class="row"><strong>callId</strong><span>CTI / 电话系统</span></div>
+                <div class="row"><strong>audioStreamId</strong><span>CTI / 录音系统</span></div>
+                <div class="row"><strong>speaker</strong><span>报警人 / 接警员 / 未知</span></div>
+                <div class="row"><strong>qaType</strong><span>question / answer</span></div>
+                <div class="row"><strong>qaNo</strong><span>Q1 / A1 / Q2 / A2</span></div>
+                <div class="row"><strong>text</strong><span>ASR 后端返回文本</span></div>
+                <div class="row"><strong>audioClipUrl</strong><span>该段文本对应语音</span></div>
+                <div class="row"><strong>keywords</strong><span>含颜色类型：地址、人员、风险等</span></div>
+                <div class="row"><strong>questionCategory</strong><span>定位核实 / 人员核实 / 通行条件</span></div>
+              </div>
+            </div>
+            <div class="arrow">→</div>
+            <div class="card">
+              <h3>输出：这个组件给别人什么</h3>
+              <div class="list">
+                <div class="row"><strong>transcript</strong><span>对话识别文本</span></div>
+                <div class="row"><strong>highlightedKeywords</strong><span>高亮重点词</span></div>
+                <div class="row"><strong>extractedFacts</strong><span>地址、楼栋、楼层、人员、资源线索</span></div>
+                <div class="row"><strong>qaSegments</strong><span>问题/回答序列 Q1/A1</span></div>
+                <div class="row"><strong>audioSegments</strong><span>每段文本对应语音条</span></div>
+                <div class="row"><strong>asrStatus</strong><span>识别中 / 异常 / 结束</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-link">
+          <div class="flow">
+            <div class="node" data-toast="来电显示模块提供号码、定位、通话ID。"><h4>来电显示</h4><p>提供当前电话、定位和通话标识。</p></div>
+            <div class="node" data-toast="CTI/录音模块提供语音流、通话状态、录音回放。"><h4>CTI/录音</h4><p>提供音频流和通话状态。</p></div>
+            <div class="node" data-toast="ASR 后端把语音流转成文本流。"><h4>ASR 后端</h4><p>输出文本、时间戳、说话人。</p></div>
+            <div class="node" data-toast="其他模块可消费ASR线索，但具体业务判断不在ASR组件内完成。"><h4>其他业务模块</h4><p>按需消费文本和重点词线索。</p></div>
+            <div class="node" data-toast="警情录入/建筑画像接收人工确认后的线索；资源线索仅作为后续参考。"><h4>录入/画像</h4><p>接收楼栋、楼层、受困人员、资源线索等。</p></div>
+          </div>
+          <div class="grid-2">
+            <div class="card">
+              <h3>ASR 不直接做什么</h3>
+              <div class="list">
+                <div class="row"><strong>不直接立案</strong><span>只提供线索</span></div>
+                <div class="row"><strong>不直接派车</strong><span>资源调度另做</span></div>
+                <div class="row"><strong>不直接覆盖录入</strong><span>需人工确认</span></div>
+              </div>
+            </div>
+            <div class="card">
+              <h3>ASR 直接负责什么</h3>
+              <div class="list">
+                <div class="row"><strong>展示识别文本</strong><span>报警人与接警员对话</span></div>
+                <div class="row"><strong>标出重点词</strong><span>地址、楼层、受困、资源线索等</span></div>
+                <div class="row"><strong>输出线索</strong><span>供其他模块按需消费</span></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="screen" id="screen-api">
+          <div class="grid-2">
+            <div class="card api-box">
+              <h3>后端推送示例</h3>
+              <pre>{
+  "callId": "CALL-20260604-1536",
+  "segmentId": "SEG-0003",
+  "speaker": "caller",
+  "qaType": "answer",
+  "qaNo": "A1",
+  "questionCategory": "楼栋与人员位置",
+  "text": "1号楼有3个人在22层",
+  "startAt": "15:36:25",
+  "endAt": "15:36:31",
+  "audioClipUrl": "/audio/CALL-1536/SEG-0003.wav",
+  "keywords": [
+    {"text": "1号楼", "type": "location"},
+    {"text": "3个人", "type": "person"},
+    {"text": "22层", "type": "person"},
+    {"text": "需要云梯救援", "type": "resource"}
+  ],
+  "status": "recognizing"
+}</pre>
+            </div>
+            <div class="card api-box">
+              <h3>要素输出示例</h3>
+              <pre>{
+  "callId": "CALL-20260604-1536",
+  "facts": {
+    "buildingNo": "1号楼",
+    "fireFloor": "18层",
+    "trappedCount": 3,
+    "trappedFloor": "22层",
+    "riskTrend": "烟越来越大",
+    "resourceHint": "需要云梯救援"
+  },
+  "qaSegments": ["A0", "Q1", "A1", "Q2", "A2", "Q3", "A3"],
+  "colorRules": {
+    "location": "#45e8ff",
+    "disaster": "#ff4f73",
+    "person": "#ffc247",
+    "risk": "#ff8d3a",
+    "access": "#21e39b",
+    "resource": "#a488ff"
+  },
+  "confirmStatus": "pending"
+}</pre>
+            </div>
+          </div>
+        </section>
+
+      </section>
+    </main>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    const titles = {
+      "screen-ui": "前端页面",
+      "screen-io": "输入输出",
+      "screen-link": "模块联动",
+      "screen-api": "后端契约"
+    };
+
+    function showScreen(id) {
+      document.querySelectorAll(".screen").forEach(el => el.classList.toggle("active", el.id === id));
+      document.querySelectorAll(".nav button").forEach(btn => btn.classList.toggle("active", btn.dataset.screen === id));
+      document.getElementById("pageTitle").textContent = titles[id] || "ASR 组件原型";
+      location.hash = id;
+    }
+
+    function toast(text) {
+      const el = document.getElementById("toast");
+      el.textContent = text;
+      el.classList.add("show");
+      clearTimeout(window.__toastTimer);
+      window.__toastTimer = setTimeout(() => el.classList.remove("show"), 2600);
+    }
+
+    document.querySelectorAll(".nav button").forEach(btn => {
+      btn.addEventListener("click", () => showScreen(btn.dataset.screen));
+    });
+
+    document.querySelectorAll("[data-jump]").forEach(btn => {
+      btn.addEventListener("click", () => showScreen(btn.dataset.jump));
+    });
+
+    document.querySelectorAll("[data-toast]").forEach(el => {
+      el.addEventListener("click", () => toast(el.dataset.toast));
+    });
+
+    if (location.hash && document.getElementById(location.hash.slice(1))) {
+      showScreen(location.hash.slice(1));
+    }
+  </script>
+</body>
+</html>

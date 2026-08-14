@@ -1,0 +1,13 @@
+{
+  "generator": "/home/twai/huilong/full_question_v6_strata/asr_api_use/generate_taxonomy_hotwords.py",
+  "asset_root": "/home/twai/xhw/119_robot_analysis/reports/asr_hotword_assets",
+  "source_category_summary_sha256": "a259171b57f22c4767a8d1e8fc399575dce462aa770b6cbee8b0f456c42c8528",
+  "level1_count": 12,
+  "bucket_count": 72,
+  "applicable_bucket_count": 44,
+  "nonempty_bucket_count": 38,
+  "level2_table_count": 72,
+  "level2_table_index_sha256": "ecc762598982af6c303a61baec4c889eea37ede7d0f89e0e1c165affc0e4b04b",
+  "unique_hotword_count": 740,
+  "full_txt_sha256": "f65bf60be5342929c72b4e9eab63add6169e0fb80a664380ac4d9d199dfa7ecf"
+}

@@ -1,0 +1,11 @@
+# ASR-SCENE-07 井下与受限空间
+# 一级分类: ASR-SCENE 其他警情专业表达
+# 适用: yes
+# 热词数: 5
+# 由 generate_taxonomy_hotwords.py 生成，请勿手工编辑。
+
+下水道
+井下
+深井
+管道井
+井下卡住

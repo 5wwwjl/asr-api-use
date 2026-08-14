@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>TurnDetector + ASR 集成测试</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;max-width:700px;margin:16px auto;padding:14px;background:#0f172a;color:#e2e8f0}
+h2{color:#38bdf8;margin-bottom:2px;font-size:18px}
+.sub{color:#94a3b8;font-size:12px;margin-bottom:12px}
+.panel{background:#1e293b;border-radius:10px;padding:14px;margin:8px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.row>*{flex:1;min-width:80px}
+label{display:block;margin:4px 0 2px;color:#94a3b8;font-size:11px}
+input,textarea,select{width:100%;padding:8px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:13px}
+textarea{resize:vertical;min-height:44px}
+button{padding:10px 18px;border:none;border-radius:6px;font-size:13px;cursor:pointer;margin-right:5px;margin-top:4px;font-weight:500}
+.btn-mic{background:#0284c7;color:#fff}
+.btn-turn{background:#16a34a;color:#fff}
+.btn-finish{background:#7c3aed;color:#fff}
+.btn-reset{background:#dc2626;color:#fff}
+.btn-clear{background:#334155;color:#cbd5e1}
+button:disabled{opacity:0.3;cursor:not-allowed}
+
+#stateBar{display:flex;align-items:center;gap:10px;padding:14px 18px;border-radius:10px;font-size:20px;font-weight:700;margin:8px 0;transition:all .3s}
+.st-IDLE{background:#1e293b;color:#64748b;border:2px solid #334155}
+.st-ARMED{background:#1e3a5f;color:#38bdf8;border:2px solid #0ea5e9}
+.st-LISTENING{background:#14532d;color:#4ade80;border:2px solid #22c55e}
+.st-WAITING_END{background:#422006;color:#fbbf24;border:2px solid #f59e0b}
+.st-FINISHED{background:#450a0a;color:#f87171;border:2px solid #ef4444}
+
+#meterBar{width:100%;height:8px;border-radius:4px;background:#334155;overflow:hidden;margin:6px 0}
+#meterFill{height:100%;border-radius:4px;background:#38bdf8;transition:width .06s;width:0%}
+
+#cards{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap}
+.card{flex:1;min-width:75px;background:#0f172a;border-radius:8px;padding:10px;text-align:center}
+.card .val{font-size:20px;font-weight:700;font-family:'JetBrains Mono','SF Mono',monospace}
+.card .lbl{font-size:10px;color:#94a3b8;margin-top:2px}
+
+#asrStatus{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;margin-left:6px}
+.asr-ok{background:#14532d;color:#4ade80}
+.asr-wait{background:#334155;color:#94a3b8}
+.asr-err{background:#450a0a;color:#f87171}
+
+#log{background:#0f172a;border-radius:8px;padding:12px;height:200px;overflow-y:auto;font-family:'JetBrains Mono','SF Mono',monospace;font-size:11px;line-height:1.7;white-space:pre-wrap;word-break:break-all}
+.log-event{color:#38bdf8}
+.log-asr{color:#4ade80}
+.log-asr-final{color:#4ade80;font-weight:700}
+.log-noise{color:#fbbf24}
+.log-auto{color:#22c55e;font-weight:700}
+.log-info{color:#94a3b8}
+.log-timeout{color:#f87171}
+.log-send{color:#58a6ff}
+</style>
+</head>
+<body>
+
+<h2>TurnDetector + ASR 集成测试</h2>
+<p class="sub">VAD 驱动 · 自动接 ASR · TurnDetector 状态机 · 实时识别</p>
+
+<!-- 状态 -->
+<div id="stateBar" class="st-IDLE">
+  <span id="stateIcon">⏸</span>
+  <span id="stateText">IDLE — 等待 start_turn</span>
+</div>
+
+<div id="meterBar"><div id="meterFill"></div></div>
+
+<!-- 卡片 -->
+<div id="cards">
+  <div class="card"><div class="val" id="turnCount" style="color:#c084fc">0</div><div class="lbl">已完成轮次</div></div>
+  <div class="card"><div class="val" id="segCount" style="color:#38bdf8">0</div><div class="lbl">本轮句数</div></div>
+  <div class="card"><div class="val" id="elapsedMs" style="color:#e2e8f0">0</div><div class="lbl">已用 (ms)</div></div>
+  <div class="card"><div class="val" id="silenceMs" style="color:#fbbf24">0</div><div class="lbl">静音 (ms)</div></div>
+  <div class="card"><div class="val" id="asrStableMs" style="color:#38bdf8">-</div><div class="lbl">ASR 稳定 (ms)</div></div>
+  <div class="card"><div class="val" id="countdownMs" style="color:#f87171">-</div><div class="lbl">倒计时 (ms)</div></div>
+</div>
+
+<!-- ASR 识别结果 -->
+<div class="panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+    <strong>ASR 识别结果</strong>
+    <span id="noiseWarn" style="display:none;color:#fbbf24;font-size:11px">⚠ 噪声词</span>
+    <span id="asrStatus" class="asr-wait">未连接</span>
+  </div>
+  <div id="asrInterim" style="min-height:20px;padding:6px 0;color:#94a3b8;font-size:14px;font-style:italic"></div>
+  <textarea id="asrInput" placeholder="ASR 识别文本将自动出现在这里…" readonly></textarea>
+</div>
+
+<!-- 控制 -->
+<div class="panel">
+  <div class="row">
+    <div style="flex:2;min-width:180px">
+      <label>ASR 服务地址</label>
+      <input type="text" id="asrUrl" value="wss://192.168.173.167:8443/asr" placeholder="wss://192.168.173.167:8443/asr">
+    </div>
+    <div style="flex:2;min-width:140px">
+      <label>Call ID</label>
+      <input type="text" id="callId" value="vad_demo" placeholder="会话标识">
+    </div>
+  </div>
+  <div class="row" style="margin-top:6px">
+    <div><label>语音阈值 (dB)</label><input type="range" id="thresholdDb" min="-60" max="-20" value="-40" step="1"><span id="thresholdVal" style="font-size:11px;color:#94a3b8">-40</span></div>
+    <div><label>静音判定 (ms)</label><input type="range" id="silenceMsSlider" min="400" max="3000" value="1500" step="100"><span id="silenceVal" style="font-size:11px;color:#94a3b8">1500</span></div>
+    <div><label>ASR 稳定 (ms)</label><input type="range" id="asrStableSlider" min="400" max="3000" value="1000" step="100"><span id="asrStableVal" style="font-size:11px;color:#94a3b8">1000</span></div>
+    <div><label>无人声超时 (s)</label><input type="range" id="noSpeechSlider" min="2" max="15" value="8" step="1"><span id="noSpeechVal" style="font-size:11px;color:#94a3b8">8</span></div>
+  </div>
+  <div style="margin-top:10px">
+    <button class="btn-mic" id="btnMic" onclick="toggleMic()">🎤 打开麦克风</button>
+    <button class="btn-turn" id="btnStartTurn" onclick="startTurn()" disabled>▶ 开始轮次</button>
+    <button class="btn-finish" id="btnFinish" onclick="finishTurn(true)" disabled>⏹ 手动结束</button>
+    <button class="btn-reset" id="btnReset" onclick="resetTurn()" disabled>↺ 重置</button>
+    <button class="btn-clear" onclick="clearLog()">清空日志</button>
+  </div>
+</div>
+
+<!-- 日志 -->
+<div class="panel">
+  <strong>事件日志</strong>
+  <div id="log"></div>
+</div>
+
+<script>
+// ============================================================
+// Config
+// ============================================================
+let cfg = {
+  thresholdDb: -40,
+  silenceConfirmMs: 1500,
+  speechConfirmMs: 80,
+  asrStableMs: 1000,
+  noSpeechTimeoutMs: 8000,
+  maxTurnDurationMs: 30000,
+  cooldownMs: 800,
+  minSpeechMs: 200,
+};
+const NOISE = new Set(['嗯','啊','喂','哦','呃','唔','噢','可','啧','呵','嗯嗯','啊啊','哦哦','额','咦','哎']);
+function isNoise(t){const c=t.trim().replace(/\s/g,'');return NOISE.has(c)||c.length<=1}
+
+// ============================================================
+// TurnDetector 状态机
+// ============================================================
+const ST = {IDLE:'IDLE',ARMED:'ARMED',LISTENING:'LISTENING',WAITING_END:'WAITING_END',FINISHED:'FINISHED'};
+let st = ST.IDLE;
+let turnStartedAt = 0;
+let lastTextChangeAt = 0;
+let lastAsrText = '';
+let answerBuffer = '';
+let segCount = 0;
+let turnCount = 0;
+let silenceFrames = 0;
+let speechFrames = 0;
+let confirmFrames = 0;
+let cooldownAt = 0;
+let frameMs = 30;
+
+// 音频
+let audioCtx=null, stream=null, processor=null;
+let micOpen=false;
+
+// ASR
+let asrWs=null;
+let asrFinalReceived=false;
+let asrSeq=0;
+let asrAudioTimeMs=0;
+let asrCallId='';
+let asrEnded=false;
+
+function rmsToDb(r){return r<=0?-Infinity:20*Math.log10(r)}
+function nowMs(){return performance.now()}
+function $(id){return document.getElementById(id)}
+
+// ── PCM 转换 ──────────────────────────────────────────────
+function toInt16(input){
+  const out=new Int16Array(input.length);
+  for(let i=0;i<input.length;i++){const s=Math.max(-1,Math.min(1,input[i]));out[i]=s<0?s*0x8000:s*0x7fff}
+  return out;
+}
+function downsample(buffer,inRate,outRate){
+  if(outRate>=inRate)return buffer;
+  const ratio=inRate/outRate,newLen=Math.round(buffer.length/ratio);
+  const out=new Float32Array(newLen);
+  for(let i=0;i<newLen;i++){const s=Math.round(i*ratio),e=Math.round((i+1)*ratio);let sum=0,c=0;for(let j=s;j<e&&j<buffer.length;j++){sum+=buffer[j];c++}out[i]=c?sum/c:0}
+  return out;
+}
+
+function pcmToBase64(pcm){
+  const bytes=new Uint8Array(pcm.buffer,pcm.byteOffset,pcm.byteLength);
+  let binary='';
+  const chunkSize=0x8000;
+  for(let i=0;i<bytes.length;i+=chunkSize){
+    binary+=String.fromCharCode.apply(null,bytes.subarray(i,i+chunkSize));
+  }
+  return btoa(binary);
+}
+
+function sendBridgeEvent(eventType,payload={},timestampMs=asrAudioTimeMs){
+  if(!asrWs||asrWs.readyState!==WebSocket.OPEN)return;
+  asrSeq++;
+  asrWs.send(JSON.stringify({
+    schemaVersion:'1.0',
+    eventId:`evt-${asrCallId}-${String(asrSeq).padStart(6,'0')}`,
+    eventType,
+    callId:asrCallId,
+    streamId:'stream-main',
+    seq:asrSeq,
+    timestampMs,
+    sendTimeMs:Date.now(),
+    sourceSystem:'vad-demo-browser',
+    payload,
+  }));
+}
+
+function sendBridgeAudioFrame(pcm){
+  if(!pcm||!pcm.length||asrEnded)return;
+  const frameDurationMs=Math.max(1,Math.round(pcm.length*1000/16000));
+  const startTimeMs=asrAudioTimeMs;
+  asrAudioTimeMs+=frameDurationMs;
+  sendBridgeEvent('audio.frame',{
+    speaker:'caller',
+    direction:'inbound',
+    startTimeMs,
+    endTimeMs:asrAudioTimeMs,
+    codec:'pcm_s16le',
+    sampleRate:16000,
+    channels:1,
+    frameDurationMs,
+    audioBase64:pcmToBase64(pcm),
+    callfrom:'micro',
+    callto:'119',
+  },asrAudioTimeMs);
+}
+
+function extractAsrDisplay(data){
+  if(data.eventType==='speech.final'){
+    return {text:((data.payload&&data.payload.text)||'').trim(), final:true, label:'speech.final'};
+  }
+  if(data.event==='call.corrected'){
+    return {text:(data.correctedText||'').trim(), final:true, label:'call.corrected'};
+  }
+  return {
+    text:(data.text||'').trim(),
+    final:Boolean(data.is_final||data.mode==='2pass-offline'),
+    label:data.mode||data.type||data.eventType||data.event||'message',
+  };
+}
+
+// ============================================================
+// ASR WebSocket
+// ============================================================
+function asrConnect(){
+  const base=$('asrUrl').value.trim();
+  let cid=$('callId').value.trim();
+  if(!cid){
+    cid=`vad-demo-${Date.now()}`;
+    $('callId').value=cid;
+  }
+  const url=cid?`${base}?callId=${encodeURIComponent(cid)}`:base;
+  log(`ASR 连接: ${url}`,'log-info');
+  asrSeq=0;
+  asrAudioTimeMs=0;
+  asrCallId=cid;
+  asrEnded=false;
+  asrWs=new WebSocket(url);
+  asrFinalReceived=false;
+
+  asrWs.onopen=()=>{
+    $('asrStatus').textContent='已连接';$('asrStatus').className='asr-ok';
+    sendBridgeEvent('call.started');
+    log(`ASR call.started: callId=${asrCallId}`,'log-send');
+  };
+
+  asrWs.onmessage=(ev)=>{
+    try{
+      const data=JSON.parse(ev.data);
+      const display=extractAsrDisplay(data);
+      const text=display.text;
+      if(!text)return;
+
+      if(display.final){
+        log(`ASR 最终: "${text}"`,'log-asr-final');
+        $('asrInterim').textContent='';
+        $('asrInput').value=text;
+        // 触发 input 事件让 TurnDetector 感知文本变化
+        $('asrInput').dispatchEvent(new Event('input',{bubbles:true}));
+        asrFinalReceived=true;
+      }else{
+        log(`ASR: "${text}"`,'log-asr');
+        $('asrInterim').textContent=text;
+        $('asrInput').value=text;
+        $('asrInput').dispatchEvent(new Event('input',{bubbles:true}));
+      }
+    }catch(e){}
+  };
+
+  asrWs.onerror=()=>{
+    $('asrStatus').textContent='错误';$('asrStatus').className='asr-err';
+    log('ASR 连接错误','log-timeout');
+  };
+
+  asrWs.onclose=()=>{
+    $('asrStatus').textContent='已断开';$('asrStatus').className='asr-wait';
+  };
+}
+
+function asrSendEnd(){
+  if(!asrWs||asrWs.readyState!==WebSocket.OPEN)return;
+  if(asrEnded)return;
+  asrEnded=true;
+  sendBridgeEvent('call.ended',{},asrAudioTimeMs);
+  log(`ASR call.ended: callId=${asrCallId}`,'log-send');
+}
+
+function asrDisconnect(){
+  asrSendEnd(); // 确保发了结束信号
+  if(asrWs){
+    // 给一点时间收最后结果
+    const ws=asrWs;asrWs=null;
+    setTimeout(()=>{try{ws.close()}catch(e){}},500);
+  }
+}
+
+// ============================================================
+// 麦克风 (常开，PCM 同时送 VAD + ASR)
+// ============================================================
+async function openMic(){
+  if(micOpen)return;
+  stream=await navigator.mediaDevices.getUserMedia({audio:true});
+  audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+  const src=audioCtx.createMediaStreamSource(stream);
+  processor=audioCtx.createScriptProcessor(2048,1,1);
+
+  let lastT=nowMs(),fc=0;
+  processor.onaudioprocess=(ev)=>{
+    const now=nowMs(),dt=now-lastT;lastT=now;
+    if(dt>0){fc++;frameMs=0.9*frameMs+0.1*dt}
+
+    // cooldown 期间不处理音频
+    if(st===ST.FINISHED)return;
+
+    const input=ev.inputBuffer.getChannelData(0);
+    let rms=0;for(let i=0;i<input.length;i++)rms+=input[i]*input[i];
+    rms=Math.sqrt(rms/input.length);
+    const db=rmsToDb(rms);
+    updateMeter(db);
+
+    // ── 发送 PCM 到 ASR (仅在 LISTENING 状态) ──
+    if(asrWs&&asrWs.readyState===WebSocket.OPEN&&st===ST.LISTENING){
+      const down=downsample(input,audioCtx.sampleRate,16000);
+      const pcm=toInt16(down);
+      sendBridgeAudioFrame(pcm);
+    }
+
+    // ── VAD 判定 ──
+    const isSpeech=isFinite(db)&&db>cfg.thresholdDb;
+    const frameCount=Math.round(dt/frameMs)||1;
+    const elapsed=st===ST.IDLE?0:Math.round(now-turnStartedAt);
+
+    if(st===ST.IDLE)return;
+
+    if(st===ST.ARMED)handleArmed(isSpeech,frameCount,elapsed,now);
+    else if(st===ST.LISTENING)handleListening(isSpeech,frameCount,elapsed,now);
+    else if(st===ST.WAITING_END)handleWaitingEnd(frameCount,elapsed,now);
+
+    updateCards(elapsed,now);
+  };
+  src.connect(processor);
+  processor.connect(audioCtx.destination);
+  micOpen=true;
+  $('btnMic').textContent='🎤 麦克风已开';
+  $('btnStartTurn').disabled=false;
+  log('麦克风已打开','log-info');
+}
+
+function closeMic(){
+  asrDisconnect();
+  if(processor){processor.disconnect();processor=null}
+  if(audioCtx){audioCtx.close();audioCtx=null}
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+  micOpen=false;st=ST.IDLE;
+  $('btnMic').textContent='🎤 打开麦克风';
+  $('btnStartTurn').disabled=true;$('btnFinish').disabled=true;$('btnReset').disabled=true;
+  setState(ST.IDLE,'IDLE — 麦克风已关闭');
+}
+
+function toggleMic(){micOpen?closeMic():openMic()}
+
+// ============================================================
+// TurnDetector API
+// ============================================================
+function startTurn(){
+  if(!micOpen)return;
+  segCount=0;answerBuffer='';silenceFrames=0;speechFrames=0;confirmFrames=0;
+  turnStartedAt=nowMs();lastTextChangeAt=0;lastAsrText='';
+  $('asrInput').value='';$('asrInterim').textContent='';
+  asrFinalReceived=false;
+  transition(ST.ARMED);
+  $('btnFinish').disabled=false;$('btnReset').disabled=false;
+  log('▶ 轮次开始 → ARMED','log-event');
+}
+
+function finishTurn(manual){
+  const ev=manual?'MANUAL_FINISH':'AUTO_SUBMIT';
+  turnCount++;
+  log(`⏹ ${ev}  答案="${answerBuffer}"  轮次#${turnCount} 提交成功 ✅`,'log-auto');
+  asrDisconnect();
+  transition(ST.FINISHED);
+  cooldownAt=nowMs();
+  // 闪烁提交成功
+  const bar=$('stateBar');bar.style.boxShadow='0 0 24px #22c55e';setTimeout(()=>bar.style.boxShadow='',600);
+}
+
+function _autoNextTurn(){
+  // 清空本轮状态，直接进入下一轮 ARMED
+  segCount=0;answerBuffer='';silenceFrames=0;speechFrames=0;confirmFrames=0;
+  turnStartedAt=nowMs();lastTextChangeAt=0;lastAsrText='';
+  $('asrInput').value='';$('asrInterim').textContent='';
+  asrFinalReceived=false;
+  transition(ST.ARMED);
+  log('▶ 自动开始下一轮 → ARMED','log-event');
+}
+
+function resetTurn(){
+  log('↺ 强制重置','log-info');
+  asrDisconnect();
+  segCount=0;answerBuffer='';silenceFrames=0;speechFrames=0;confirmFrames=0;
+  lastTextChangeAt=0;lastAsrText='';
+  $('asrInput').value='';$('asrInterim').textContent='';
+  transition(ST.IDLE);
+  $('btnFinish').disabled=true;$('btnReset').disabled=true;
+}
+
+// ============================================================
+// 状态处理
+// ============================================================
+function handleArmed(isSpeech,fc,elapsed,now){
+  if(isSpeech){
+    confirmFrames+=fc;silenceFrames=0;
+    if(confirmFrames*frameMs>=cfg.speechConfirmMs){
+      // → LISTENING: 打开 ASR 连接
+      asrConnect();
+      segCount++;
+      speechFrames=confirmFrames;
+      confirmFrames=0;
+      transition(ST.LISTENING);
+      log(`🔊 检测到人声 → LISTENING  打开ASR  #${segCount}`,'log-event');
+    }
+  }else{
+    confirmFrames=0;
+    silenceFrames+=fc;
+  }
+  if(elapsed>=cfg.noSpeechTimeoutMs){
+    log(`⏰ 无人声超时 → NO_SPEECH`,'log-timeout');
+    finishTurn(false);
+  }
+}
+
+function handleListening(isSpeech,fc,elapsed,now){
+  if(isSpeech){speechFrames+=fc;silenceFrames=0}
+  else{silenceFrames+=fc}
+  if(silenceFrames*frameMs>=cfg.silenceConfirmMs){
+    const dur=Math.round(speechFrames*frameMs);
+    if(dur>=cfg.minSpeechMs){
+      // → WAITING_END: 发 ASR 结束信号，等最终结果
+      asrSendEnd();
+      lastTextChangeAt=now;
+      const txt=$('asrInput').value.trim();
+      if(txt&&!isNoise(txt))answerBuffer=txt;
+      transition(ST.WAITING_END);
+      log(`⏸ 静音 ${cfg.silenceConfirmMs}ms → WAITING_END  说话=${dur}ms`,'log-event');
+    }else{
+      log(`⊘ 语音过短 (${dur}ms) 丢弃`,'log-noise');
+      asrDisconnect();
+      speechFrames=0;silenceFrames=0;confirmFrames=0;
+      transition(ST.ARMED);
+    }
+  }
+  if(elapsed>=cfg.maxTurnDurationMs){
+    log(`⏰ 超时 → MAX_DURATION`,'log-timeout');
+    finishTurn(false);
+  }
+}
+
+function handleWaitingEnd(fc,elapsed,now){
+  const txt=$('asrInput').value.trim();
+  if(txt!==lastAsrText){
+    lastAsrText=txt;
+    lastTextChangeAt=now;
+    if(txt&&!isNoise(txt))answerBuffer=txt;
+    else if(isNoise(txt)){$('noiseWarn').style.display='inline'}
+  }else{$('noiseWarn').style.display='none'}
+  const stableMs=Math.round(now-lastTextChangeAt);
+  $('asrStableMs').textContent=stableMs;
+  $('asrStableMs').style.color=stableMs>=cfg.asrStableMs?'#4ade80':'#fbbf24';
+
+  // ASR 稳定 + 有效内容 → auto_submit
+  if(stableMs>=cfg.asrStableMs&&answerBuffer&&!isNoise(answerBuffer)){
+    log(`✅ AUTO_SUBMIT  答案="${answerBuffer}"  稳定=${stableMs}ms`,'log-auto');
+    finishTurn(false);return;
+  }
+  if(elapsed>=cfg.maxTurnDurationMs){
+    log(`⏰ 超时 → MAX_DURATION`,'log-timeout');
+    finishTurn(false);
+  }
+}
+
+// ============================================================
+// 状态转换
+// ============================================================
+function transition(newSt){
+  st=newSt;
+  const icons={IDLE:'⏸',ARMED:'🔰',LISTENING:'🔊',WAITING_END:'⏳',FINISHED:'✅'};
+  const labels={
+    IDLE:'IDLE — 等待 start_turn',
+    ARMED:'ARMED — 监听中，等待人声…',
+    LISTENING:'LISTENING — 正在说话 + ASR 识别中',
+    WAITING_END:'WAITING_END — 等待 ASR 文本稳定…',
+    FINISHED:'FINISHED — 已提交',
+  };
+  setState(st,icons[st]+' '+labels[st]);
+  $('btnFinish').disabled=(st===ST.IDLE||st===ST.FINISHED);
+  $('btnReset').disabled=(st===ST.IDLE);
+  $('btnStartTurn').disabled=(st!==ST.IDLE||!micOpen);
+  if(st===ST.FINISHED)setTimeout(()=>{
+    if(st===ST.FINISHED&&nowMs()-cooldownAt>=cfg.cooldownMs){
+      _autoNextTurn();
+    }
+  },cfg.cooldownMs+50);
+}
+
+// ============================================================
+// UI
+// ============================================================
+function setState(css,text){const el=$('stateBar');el.className='st-'+css;$('stateText').textContent=text}
+function updateMeter(db){const p=isFinite(db)?Math.max(0,Math.min(100,(db+60)/60*100)):0;$('meterFill').style.width=p+'%'}
+function updateCards(elapsed,now){
+  $('elapsedMs').textContent=elapsed;
+  $('silenceMs').textContent=Math.round(silenceFrames*frameMs);
+  $('turnCount').textContent=turnCount;
+  $('segCount').textContent=segCount;
+  if(st===ST.ARMED){
+    $('countdownMs').textContent=Math.max(0,cfg.noSpeechTimeoutMs-elapsed);
+    $('countdownMs').style.color=cfg.noSpeechTimeoutMs-elapsed<2000?'#f87171':'#94a3b8';
+  }else if(st===ST.WAITING_END){
+    $('asrStableMs').textContent=Math.round(now-lastTextChangeAt);
+    $('countdownMs').textContent=Math.max(0,cfg.maxTurnDurationMs-elapsed);
+  }else{
+    $('countdownMs').textContent='-';
+    if(st===ST.IDLE)$('asrStableMs').textContent='-';
+  }
+}
+function log(m,c){const t=new Date().toLocaleTimeString();const el=$('log');el.innerHTML+=`<span class="${c||'log-info'}">[${t}] ${m}</span>\n`;el.scrollTop=el.scrollHeight}
+function clearLog(){$('log').innerHTML=''}
+
+// ── 滑块 ──────────────────────────────────────────────────
+$('thresholdDb').addEventListener('input',function(){cfg.thresholdDb=parseInt(this.value);$('thresholdVal').textContent=this.value});
+$('silenceMsSlider').addEventListener('input',function(){cfg.silenceConfirmMs=parseInt(this.value);$('silenceVal').textContent=this.value});
+$('asrStableSlider').addEventListener('input',function(){cfg.asrStableMs=parseInt(this.value);$('asrStableVal').textContent=this.value});
+$('noSpeechSlider').addEventListener('input',function(){cfg.noSpeechTimeoutMs=parseInt(this.value)*1000;$('noSpeechVal').textContent=this.value});
+
+// textarea 用作 TurnDetector 文本源 — 用户也可手动编辑
+$('asrInput').addEventListener('input',function(){});
+
+window.addEventListener('beforeunload',()=>{asrDisconnect();closeMic()});
+
+// 初始化
+log('TurnDetector + ASR 集成测试就绪','log-info');
+log('流程: 开麦 → 开始轮次 → 说话(VAD检测+ASR识别) → 自动提交','log-info');
+</script>
+</body>
+</html>

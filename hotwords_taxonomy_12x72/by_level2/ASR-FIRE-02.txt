@@ -1,0 +1,15 @@
+# ASR-FIRE-02 火势状态
+# 一级分类: ASR-FIRE 火灾表达
+# 适用: yes
+# 热词数: 9
+# 由 generate_taxonomy_hotwords.py 生成，请勿手工编辑。
+
+明火
+复燃
+阴燃
+火势
+火苗
+扑灭
+控制不住
+火很大
+烧得很大

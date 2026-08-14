@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>A / C 实时识别对照</title>
+<style>
+:root{
+  --paper:#edf1f4;--panel:#f9fbfc;--ink:#16202a;--muted:#697784;--line:#cbd4dc;
+  --a:#315d73;--a-soft:#e5eef2;--e:#d75b2a;--e-soft:#fff0e9;--good:#14765a;
+  --dark:#17232c;--white:#fff;--shadow:0 18px 44px rgba(20,37,48,.10);
+}
+*{box-sizing:border-box}
+html{background:var(--paper)}
+body{margin:0;color:var(--ink);background:
+  linear-gradient(90deg,transparent calc(50% - .5px),rgba(74,92,105,.09) 50%,transparent calc(50% + .5px)),
+  var(--paper);font-family:"Noto Sans SC","Source Han Sans SC","PingFang SC","Microsoft YaHei",sans-serif}
+button{font:inherit}
+.shell{width:min(1500px,calc(100% - 48px));margin:0 auto;padding:34px 0 48px}
+.masthead{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:30px;align-items:end;margin-bottom:24px}
+.eyebrow{margin:0 0 10px;color:var(--e);font:700 12px/1.2 ui-monospace,"SFMono-Regular",Consolas,monospace;letter-spacing:.18em;text-transform:uppercase}
+h1{margin:0;font-family:"STZhongsong","Songti SC",serif;font-size:clamp(34px,5vw,66px);font-weight:600;line-height:1.05;letter-spacing:-.045em}
+.lead{max-width:760px;margin:14px 0 0;color:var(--muted);font-size:15px;line-height:1.7}
+.system-state{display:flex;align-items:center;gap:9px;padding:10px 13px;border:1px solid var(--line);background:rgba(255,255,255,.56);font:600 12px/1.2 ui-monospace,"SFMono-Regular",Consolas,monospace;color:var(--muted)}
+.system-state i{width:8px;height:8px;border-radius:50%;background:#87949e}.system-state.live i{background:var(--e);box-shadow:0 0 0 5px rgba(215,91,42,.15)}
+.console{position:relative;display:grid;grid-template-columns:220px minmax(180px,1fr) 220px;align-items:center;gap:20px;min-height:112px;padding:18px 22px;background:var(--dark);color:var(--white);box-shadow:var(--shadow);overflow:hidden}
+.console:before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 39px,rgba(255,255,255,.025) 40px);pointer-events:none}
+.record{position:relative;z-index:1;display:flex;align-items:center;gap:13px;border:0;background:transparent;color:inherit;cursor:pointer;text-align:left;padding:6px}
+.record:focus-visible,.clear:focus-visible{outline:3px solid #ffb18e;outline-offset:4px}
+.record-orb{width:58px;height:58px;display:grid;place-items:center;border-radius:50%;background:var(--e);box-shadow:0 0 0 7px rgba(215,91,42,.17);transition:transform .2s ease,background .2s ease}
+.record:hover .record-orb{transform:scale(1.04)}
+.record[aria-pressed="true"] .record-orb{background:#f1f5f7;color:var(--e);animation:recording 1.25s ease-out infinite}
+.record svg{width:25px;height:25px;fill:currentColor}.record-copy strong{display:block;font-size:15px}.record-copy span{display:block;margin-top:3px;color:#9dacb6;font-size:12px}
+.wave-wrap{position:relative;z-index:1;height:62px;border-left:1px solid rgba(255,255,255,.15);border-right:1px solid rgba(255,255,255,.15)}
+#wave{display:block;width:100%;height:62px}.wave-label{position:absolute;left:10px;top:4px;color:#71828d;font:10px/1 ui-monospace,monospace;letter-spacing:.12em}
+.run-data{position:relative;z-index:1;display:grid;grid-template-columns:1fr auto;gap:7px 18px;align-items:center;font:12px/1.2 ui-monospace,"SFMono-Regular",Consolas,monospace;color:#9dacb6}
+.run-data strong{color:#fff;font-size:20px;font-weight:500;font-variant-numeric:tabular-nums}.clear{border:1px solid #4a5a65;background:transparent;color:#dbe2e6;padding:7px 10px;cursor:pointer;grid-row:1/3;grid-column:2}.clear:hover{border-color:#8fa0ab}
+.error{display:none;margin-top:12px;padding:11px 14px;border-left:4px solid #b42318;background:#fee4e2;color:#7a271a;font-size:13px}.error.show{display:block}
+.columns{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:18px}
+.channel{min-width:0;background:var(--panel);border:1px solid var(--line);box-shadow:0 10px 28px rgba(20,37,48,.06)}
+.channel.a{border-top:5px solid var(--a)}.channel.e{border-top:5px solid var(--e)}
+.channel-head{min-height:115px;padding:19px 22px 16px;border-bottom:1px solid var(--line);display:grid;grid-template-columns:auto 1fr auto;gap:15px;align-items:start}
+.letter{font:700 42px/.9 "DIN Alternate","Arial Narrow",sans-serif;color:var(--a)}.e .letter{color:var(--e)}
+.channel-title h2{font-size:18px;margin:0 0 7px}.channel-title p{margin:0;color:var(--muted);font-size:12px;line-height:1.55}
+.path-badge{padding:5px 8px;background:var(--a-soft);color:var(--a);font:700 10px/1.2 ui-monospace,monospace;letter-spacing:.06em;white-space:nowrap}.e .path-badge{background:var(--e-soft);color:var(--e)}
+.feed{min-height:390px;padding:24px;display:flex;flex-direction:column;gap:13px}
+.empty{margin:auto;max-width:330px;text-align:center;color:#87949e;line-height:1.8}.empty strong{display:block;color:#53636f;font-size:17px;margin-bottom:5px}
+.utterance{position:relative;padding:15px 17px 14px;border-left:3px solid var(--a);background:#fff;box-shadow:0 4px 14px rgba(31,50,62,.055)}.e .utterance{border-left-color:var(--e)}
+.utterance.partial{opacity:.74}.utterance-text{font-size:21px;line-height:1.75;letter-spacing:.015em;white-space:pre-wrap;overflow-wrap:anywhere}
+.utterance-meta{display:flex;align-items:center;gap:8px;margin-top:9px;color:var(--muted);font:11px/1.2 ui-monospace,monospace}
+.pill{padding:3px 6px;background:#eef2f4;color:#60707b}.pill.corrected{background:var(--e-soft);color:#b5471d;font-weight:700}.pill.live{background:var(--a-soft);color:var(--a)}
+.original{margin-top:10px;padding-top:9px;border-top:1px dashed #d8dfe4;color:var(--muted);font-size:13px;line-height:1.6}.original b{color:#45545f;font-weight:600}
+.channel-foot{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--line);background:#f3f6f8}.stat{padding:13px 15px;border-right:1px solid var(--line);color:var(--muted);font-size:11px}.stat:last-child{border:0}.stat strong{display:block;margin-top:4px;color:var(--ink);font-size:13px}
+.method{margin:18px 2px 0;display:flex;gap:12px;align-items:flex-start;color:var(--muted);font-size:12px;line-height:1.65}.method:before{content:"同源";flex:none;margin-top:1px;padding:3px 6px;background:#dfe6ea;color:#475963;font:700 10px/1 ui-monospace,monospace;letter-spacing:.08em}
+@keyframes recording{0%{box-shadow:0 0 0 0 rgba(215,91,42,.38)}70%{box-shadow:0 0 0 14px rgba(215,91,42,0)}100%{box-shadow:0 0 0 0 rgba(215,91,42,0)}}
+@media(max-width:900px){.shell{width:min(100% - 24px,700px);padding-top:22px}.masthead{grid-template-columns:1fr}.system-state{justify-self:start}.console{grid-template-columns:1fr auto}.wave-wrap{grid-column:1/-1;grid-row:2}.run-data{grid-column:2;grid-row:1}.columns{grid-template-columns:1fr}.feed{min-height:260px}.channel-head{min-height:0}}
+@media(max-width:560px){body{background:var(--paper)}h1{font-size:38px}.console{grid-template-columns:1fr;padding:16px}.run-data{grid-column:1;grid-row:2}.wave-wrap{grid-row:3}.clear{grid-row:auto;grid-column:2}.columns{gap:12px}.channel-head{grid-template-columns:auto 1fr}.path-badge{grid-column:2}.channel-foot{grid-template-columns:1fr}.stat{border-right:0;border-bottom:1px solid var(--line)}.feed{padding:16px}.utterance-text{font-size:18px}}
+@media(prefers-reduced-motion:reduce){.record-orb{transition:none}.record[aria-pressed="true"] .record-orb{animation:none}}
+</style>
+</head>
+<body>
+<main class="shell">
+  <header class="masthead">
+    <div>
+      <p class="eyebrow">119 ASR · 同声对照</p>
+      <h1>说一次，听见两条链路</h1>
+      <p class="lead">同一份麦克风音频同时进入 A 裸模型与 C 热词增强链路。左侧保留模型原始输出；右侧实时显示基于12个一级分类、72个二级分类热词表的识别结果，并在纠错完成后原位更新。</p>
+    </div>
+    <div class="system-state" id="systemState"><i></i><span id="systemText">准备就绪</span></div>
+  </header>
+
+  <section class="console" aria-label="录音控制台">
+    <button class="record" id="recordBtn" type="button" aria-pressed="false">
+      <span class="record-orb" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 15.5a3.5 3.5 0 0 0 3.5-3.5V5a3.5 3.5 0 1 0-7 0v7a3.5 3.5 0 0 0 3.5 3.5Zm-1.5-10.5a1.5 1.5 0 0 1 3 0v7a1.5 1.5 0 0 1-3 0V5Zm7 7a5.5 5.5 0 0 1-11 0h-2a7.5 7.5 0 0 0 6.5 7.43V22h2v-2.57A7.5 7.5 0 0 0 19.5 12h-2Z"/></svg>
+      </span>
+      <span class="record-copy"><strong id="recordLabel">开始实时转写</strong><span>一次录音 · 双路同步</span></span>
+    </button>
+    <div class="wave-wrap"><span class="wave-label">SHARED PCM / 16 KHZ</span><canvas id="wave" aria-hidden="true"></canvas></div>
+    <div class="run-data">
+      <span>录音时长</span><button class="clear" id="clearBtn" type="button">清空</button>
+      <strong id="timer">00:00</strong>
+    </div>
+  </section>
+  <div class="error" id="errorBox" role="alert"></div>
+
+  <section class="columns" aria-label="A C 实时转写对照">
+    <article class="channel a">
+      <header class="channel-head">
+        <span class="letter">A</span>
+        <div class="channel-title"><h2>Paraformer-large 原始识别</h2><p>GPU Paraformer-large · 原生协议 · 不注入热词 · 不经过前后处理</p></div>
+        <span class="path-badge">RAW BASELINE</span>
+      </header>
+      <div class="feed" id="aFeed" aria-live="polite"><div class="empty"><strong>等待语音</strong>点击上方麦克风，说出地址或火警描述。</div></div>
+      <footer class="channel-foot">
+        <div class="stat">连接<strong id="aStatus">未连接</strong></div>
+        <div class="stat">热词<strong>0 条</strong></div>
+        <div class="stat">业务纠错<strong>关闭</strong></div>
+      </footer>
+    </article>
+
+    <article class="channel e">
+      <header class="channel-head">
+        <span class="letter">C</span>
+        <div class="channel-title"><h2>FunASR 分类热词增强</h2><p>ContextualParaformer · 12×72分类静态热词 · 地址对齐 · 火警规则纠错</p></div>
+        <span class="path-badge">ENHANCED</span>
+      </header>
+      <div class="feed" id="eFeed" aria-live="polite"><div class="empty"><strong>等待语音</strong>实时结果先出现，纠错完成后会保留原文对照。</div></div>
+      <footer class="channel-foot">
+        <div class="stat">连接<strong id="eStatus">未连接</strong></div>
+        <div class="stat">静态热词<strong>740 条</strong></div>
+        <div class="stat">已纠错语段<strong id="correctionCount">0</strong></div>
+      </footer>
+    </article>
+  </section>
+
+  <p class="method">两列共享浏览器采集到的同一 PCM 帧。A 使用 GPU Paraformer-large（FP32），不注入热词且不经过业务纠错；C 使用 GPU ContextualParaformer，并加载12×72分类热词表。</p>
+</main>
+<script src="/accuracy_ae_transcript.js?v=20260812-1"></script>
+<script>
+const $=id=>document.getElementById(id);
+const state={running:false,starting:false,aWs:null,eWs:null,stream:null,audioCtx:null,source:null,processor:null,seq:0,audioMs:0,startedAt:0,timerId:null,closeTimer:null,waveFrame:null,wave:Array(120).fill(0),a:AccuracyAETranscript.createBaselineState(),e:AccuracyAETranscript.createEnhancedState()};
+
+function wsUrl(path,query=''){const scheme=location.protocol==='https:'?'wss':'ws';return `${scheme}://${location.host}${path}${query}`}
+function setStatus(id,text){$(id).textContent=text}
+function showError(message){$('errorBox').textContent=message;$('errorBox').classList.toggle('show',Boolean(message))}
+function escapeText(text){const node=document.createElement('span');node.textContent=text||'';return node.innerHTML}
+function formatTime(ms){const total=Math.floor(ms/1000),minutes=Math.floor(total/60),seconds=total%60;return `${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`}
+function providerLabel(value){return ({db_align:'地址对齐',hotword:'热词纠错',rule:'规则纠错'})[value]||value||'业务纠错'}
+
+function renderA(snapshot){if(!snapshot.items.length){$('aFeed').innerHTML='<div class="empty"><strong>正在聆听</strong>原始模型结果将在这里实时出现。</div>';return}$('aFeed').innerHTML=snapshot.items.map(item=>`<div class="utterance ${item.final?'':'partial'}"><div class="utterance-text">${escapeText(item.text)}</div><div class="utterance-meta"><span class="pill ${item.final?'':'live'}">${item.final?'模型定稿':'实时识别'}</span></div></div>`).join('')}
+function renderE(snapshot){$('correctionCount').textContent=String(snapshot.correctionCount);if(!snapshot.items.length){$('eFeed').innerHTML='<div class="empty"><strong>正在聆听</strong>热词增强结果将在这里实时出现。</div>';return}$('eFeed').innerHTML=snapshot.items.map(item=>{const correction=item.corrected?`<span class="pill corrected">${escapeText(providerLabel(item.correctionProvider))}</span>`:`<span class="pill ${item.final?'':'live'}">${item.final?'识别定稿':'实时识别'}</span>`;const original=item.changed?`<div class="original"><b>原识别：</b>${escapeText(item.raw)}</div>`:'';return `<div class="utterance ${item.final?'':'partial'}"><div class="utterance-text">${escapeText(item.text)}</div><div class="utterance-meta">${correction}</div>${original}</div>`}).join('')}
+
+function resetTranscripts(){state.a=AccuracyAETranscript.createBaselineState();state.e=AccuracyAETranscript.createEnhancedState();$('aFeed').innerHTML='<div class="empty"><strong>等待语音</strong>点击上方麦克风，说出地址或火警描述。</div>';$('eFeed').innerHTML='<div class="empty"><strong>等待语音</strong>实时结果先出现，纠错完成后会保留原文对照。</div>';$('correctionCount').textContent='0';showError('')}
+function pcmToBase64(pcm){const bytes=new Uint8Array(pcm.buffer,pcm.byteOffset,pcm.byteLength);let binary='';for(let i=0;i<bytes.length;i+=0x8000)binary+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000));return btoa(binary)}
+function toInt16(input){const out=new Int16Array(input.length);for(let i=0;i<input.length;i++){const value=Math.max(-1,Math.min(1,input[i]));out[i]=value<0?value*32768:value*32767}return out}
+function downsample(buffer,inputRate,outputRate=16000){if(inputRate===outputRate)return buffer;const ratio=inputRate/outputRate,length=Math.round(buffer.length/ratio),out=new Float32Array(length);for(let i=0;i<length;i++){const start=Math.round(i*ratio),end=Math.round((i+1)*ratio);let sum=0,count=0;for(let j=start;j<end&&j<buffer.length;j++){sum+=buffer[j];count++}out[i]=count?sum/count:0}return out}
+function bridgeEvent(eventType,payload={}){state.seq+=1;return {schemaVersion:'1.0',eventId:`evt-${state.callId}-${String(state.seq).padStart(6,'0')}`,eventType,callId:state.callId,streamId:'stream-main',seq:state.seq,timestampMs:state.audioMs,sendTimeMs:Date.now(),sourceSystem:'accuracy-ae-demo',project:'firebot',payload}}
+function sendE(eventType,payload={}){if(state.eWs?.readyState===WebSocket.OPEN)state.eWs.send(JSON.stringify(bridgeEvent(eventType,payload)))}
+function connect(url,label,onMessage,onOpen){return new Promise((resolve,reject)=>{const ws=new WebSocket(url);let settled=false;const timer=setTimeout(()=>{try{ws.close(4000,'connect timeout')}catch(_){}if(!settled)reject(new Error(`${label}连接超时`))},8000);ws.onopen=()=>{clearTimeout(timer);settled=true;if(onOpen)onOpen(ws);resolve(ws)};ws.onmessage=event=>{try{onMessage(JSON.parse(event.data))}catch(error){console.warn(`${label}消息解析失败`,error)}};ws.onerror=()=>{clearTimeout(timer);if(!settled)reject(new Error(`${label}连接失败`))};ws.onclose=()=>{clearTimeout(timer);if(label==='A')setStatus('aStatus','已断开');else setStatus('eStatus','已断开')}})}
+
+async function start(){if(state.running||state.starting)return;state.starting=true;showError('');resetTranscripts();$('recordBtn').disabled=true;$('recordLabel').textContent='正在建立双路连接';$('systemText').textContent='请求麦克风权限';try{
+  state.stream=await navigator.mediaDevices.getUserMedia({audio:{channelCount:1,echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+  state.callId=`accuracy-ae-${Date.now()}`;state.seq=0;state.audioMs=0;
+  const aPromise=connect(wsUrl('/asr-accuracy-a',`?callId=${encodeURIComponent(state.callId)}-a`),'A',data=>{const snapshot=AccuracyAETranscript.applyBaseline(state.a,data);if(snapshot)renderA(snapshot)},ws=>ws.send(JSON.stringify({chunk_size:[5,10,5],wav_name:`${state.callId}-a`,is_speaking:true,chunk_interval:10,mode:'2pass',itn:true,language:'auto'})));
+  const ePromise=connect(wsUrl('/asr',`?callId=${encodeURIComponent(state.callId)}&callfrom=micro&callto=119&project=firebot`),'E',data=>{const snapshot=AccuracyAETranscript.applyEnhanced(state.e,data);if(snapshot)renderE(snapshot)},ws=>{state.eWs=ws;sendE('call.started')});
+  [state.aWs,state.eWs]=await Promise.all([aPromise,ePromise]);setStatus('aStatus','实时转写');setStatus('eStatus','实时转写');
+  state.audioCtx=new(window.AudioContext||window.webkitAudioContext)();await state.audioCtx.resume();state.source=state.audioCtx.createMediaStreamSource(state.stream);state.processor=state.audioCtx.createScriptProcessor(4096,1,1);state.running=true;state.startedAt=Date.now();
+  state.processor.onaudioprocess=event=>{if(!state.running)return;const samples=downsample(event.inputBuffer.getChannelData(0),state.audioCtx.sampleRate),pcm=toInt16(samples),frameMs=Math.max(1,Math.round(pcm.length*1000/16000)),startMs=state.audioMs;state.audioMs+=frameMs;let energy=0;for(let i=0;i<samples.length;i+=8)energy+=samples[i]*samples[i];state.wave.push(Math.min(1,Math.sqrt(energy/Math.max(1,Math.ceil(samples.length/8)))*5));state.wave.shift();if(state.aWs?.readyState===WebSocket.OPEN)state.aWs.send(pcm.buffer.slice(pcm.byteOffset,pcm.byteOffset+pcm.byteLength));sendE('audio.frame',{speaker:'caller',direction:'inbound',startTimeMs:startMs,endTimeMs:state.audioMs,codec:'pcm_s16le',sampleRate:16000,channels:1,frameDurationMs:frameMs,audioBase64:pcmToBase64(pcm),callfrom:'micro',callto:'119'})};
+  state.source.connect(state.processor);state.processor.connect(state.audioCtx.destination);state.timerId=setInterval(()=>$('timer').textContent=formatTime(Date.now()-state.startedAt),250);$('recordBtn').setAttribute('aria-pressed','true');$('recordLabel').textContent='停止并生成最终结果';$('systemState').classList.add('live');$('systemText').textContent='A / C 同步转写中';drawWave();
+}catch(error){showError(`启动失败：${error.message}。请确认浏览器已允许麦克风，并检查 A/C 服务状态。`);await stop(false)}finally{state.starting=false;$('recordBtn').disabled=false}}
+
+async function stop(waitForFinal=true){state.running=false;clearInterval(state.timerId);state.timerId=null;if(state.processor){state.processor.disconnect();state.processor=null}if(state.source){state.source.disconnect();state.source=null}if(state.audioCtx){await state.audioCtx.close();state.audioCtx=null}if(state.stream){state.stream.getTracks().forEach(track=>track.stop());state.stream=null}if(state.aWs?.readyState===WebSocket.OPEN)state.aWs.send(JSON.stringify({is_speaking:false,mode:'2pass'}));if(state.eWs?.readyState===WebSocket.OPEN)sendE('call.ended');$('recordBtn').setAttribute('aria-pressed','false');$('recordLabel').textContent=waitForFinal?'正在整理最终结果':'开始实时转写';$('systemState').classList.remove('live');$('systemText').textContent=waitForFinal?'等待模型定稿与纠错':'准备就绪';setStatus('aStatus',waitForFinal?'正在定稿':'未连接');setStatus('eStatus',waitForFinal?'正在纠错':'未连接');if(waitForFinal)await new Promise(resolve=>setTimeout(resolve,2400));for(const key of ['aWs','eWs']){const ws=state[key];try{if(ws&&(ws.readyState===WebSocket.OPEN||ws.readyState===WebSocket.CONNECTING))ws.close(1000,'demo stopped')}catch(_){}state[key]=null}if(waitForFinal){$('recordLabel').textContent='再次实时转写';$('systemText').textContent='本轮结果已完成';setStatus('aStatus','本轮完成');setStatus('eStatus','本轮完成')}}
+
+function sizeCanvas(){const canvas=$('wave'),ratio=window.devicePixelRatio||1,rect=canvas.getBoundingClientRect(),targetWidth=Math.max(1,Math.round(rect.width*ratio)),targetHeight=Math.max(1,Math.round(rect.height*ratio));if(canvas.width!==targetWidth)canvas.width=targetWidth;if(canvas.height!==targetHeight)canvas.height=targetHeight;return {canvas,ctx:canvas.getContext('2d'),width:rect.width,height:rect.height,ratio}}
+function drawWave(){cancelAnimationFrame(state.waveFrame);const draw=()=>{const {ctx,width,height,ratio}=sizeCanvas();ctx.setTransform(ratio,0,0,ratio,0,0);ctx.clearRect(0,0,width,height);ctx.strokeStyle=state.running?'#ef7c4d':'#536773';ctx.lineWidth=1.5;ctx.beginPath();state.wave.forEach((value,index)=>{const x=index/(state.wave.length-1)*width,y=height/2+(index%2?-1:1)*value*(height*.38);if(index===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)});ctx.stroke();state.wave=state.wave.map(value=>state.running?value*.985:value*.91);state.waveFrame=requestAnimationFrame(draw)};draw()}
+
+$('recordBtn').addEventListener('click',async()=>{if(state.starting)return;if(state.running){$('recordBtn').disabled=true;try{await stop(true)}finally{$('recordBtn').disabled=false}}else await start()});
+$('clearBtn').addEventListener('click',()=>{if(!state.running)resetTranscripts()});
+window.addEventListener('resize',drawWave);window.addEventListener('beforeunload',()=>{state.running=false;for(const key of ['aWs','eWs'])try{state[key]?.close()}catch(_){}state.stream?.getTracks().forEach(track=>track.stop())});
+drawWave();
+</script>
+</body>
+</html>
